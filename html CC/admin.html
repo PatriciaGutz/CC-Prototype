@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="justify-content: flex-start; align-items: stretch; background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%);">
+    
+    <!-- INVENTORY EDIT / ADD MODAL -->
+    <div id="modal-inventory-form" class="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 id="inv-modal-title" class="font-bold text-sm uppercase text-slate-900">Add / Edit Inventory Item</h3>
+                <button onclick="closeInventoryModal()" class="text-slate-400 font-bold text-base">✕</button>
+            </div>
+            <input type="hidden" id="inv-edit-index" value="-1">
+            <div>
+                <label class="font-bold text-slate-700 block mb-1">Item Name</label>
+                <input type="text" id="inv-form-name" placeholder="e.g. 1 pc Chicken w/ Java Rice" class="w-full bg-slate-50 border rounded-xl p-2.5 outline-none focus:border-orange-500">
+            </div>
+            <div>
+                <label class="font-bold text-slate-700 block mb-1">Category</label>
+                <select id="inv-form-category" class="w-full bg-slate-50 border rounded-xl p-2.5 outline-none focus:border-orange-500">
+                    <option value="Chicken">Chicken</option>
+                    <option value="Meals">Meals</option>
+                    <option value="Drinks">Drinks</option>
+                    <option value="Snacks">Snacks</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Price (₱)</label>
+                    <input type="number" id="inv-form-price" step="0.50" class="w-full bg-slate-50 border rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Stock Quantity</label>
+                    <input type="number" id="inv-form-stock" class="w-full bg-slate-50 border rounded-xl p-2.5">
+                </div>
+            </div>
+            <div>
+                <label class="font-bold text-slate-700 block mb-1">Dish Photo (Emoji or Image File)</label>
+                <input type="text" id="inv-form-photo" placeholder="Emoji or photo URL" class="w-full bg-slate-50 border rounded-xl p-2.5">
+                <input type="file" id="inv-form-photo-file" accept="image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-orange-50 file:text-orange-700">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveInventoryModal()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs shadow">Save Item</button>
+                <button onclick="closeInventoryModal()" class="w-full bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="brand-header flex justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-3">
+            <img src="images/logo.png" alt="Campus Chicken logo" class="w-8 h-8 rounded-full object-cover shadow">
+            <h1 class="font-bold text-sm tracking-wide">Campus Chicken SmartStall - Admin & Kitchen Management Portal</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span id="logged-staff-display" class="text-xs bg-white/20 px-3 py-1 rounded-full text-white font-medium">Logged in: Staff</span>
+            <span class="text-xs text-amber-200">Operating Hours: 7:00 AM - 7:00 PM</span>
+            <a href="admin_login.html" onclick="event.preventDefault(); appConfirm('Log out of the admin dashboard?', 'Log Out').then(confirmed => { if(confirmed) window.location.href = this.href; });" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-3 py-1.5 rounded-lg text-xs shadow">Log Out</a>
+        </div>
+    </header>
+
+    <div class="flex flex-grow max-w-7xl mx-auto w-full p-4 gap-4">
+        <div class="w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-4 flex flex-col space-y-2 shrink-0">
+            <div class="text-center pb-3 border-b mb-2">
+                <span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">Admin Control</span>
+            </div>
+            <button onclick="switchAdminTab('dashboard')" id="nav-dashboard" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 bg-orange-500 text-white shadow-md transition">
+                <i class="fa-solid fa-chart-pie w-5"></i><span>Dashboard</span>
+            </button>
+            <button onclick="switchAdminTab('kitchen')" id="nav-kitchen" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition">
+                <i class="fa-solid fa-fire-burner w-5"></i><span>Kitchen Display</span>
+            </button>
+            <button onclick="switchAdminTab('inventory')" id="nav-inventory" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition">
+                <i class="fa-solid fa-boxes-stacked w-5"></i><span>Inventory</span>
+            </button>
+            <button onclick="switchAdminTab('system')" id="nav-system" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition">
+                <i class="fa-solid fa-gears w-5"></i><span>Admin System</span>
+            </button>
+        </div>
+
+        <div class="flex-grow space-y-4">
+            
+            <!-- 1. DASHBOARD -->
+            <div id="tab-content-dashboard" class="space-y-4">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">SALES & FINANCIAL DASHBOARD</h2>
+                        <span class="text-[10px] text-amber-200">Real-time transactional revenue and automated analytics</span>
+                    </div>
+                    <div class="flex gap-1 bg-white/20 p-1 rounded-xl">
+                        <button onclick="setSalesFilter('daily')" id="filter-daily" class="px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-bold shadow">DAILY</button>
+                        <button onclick="setSalesFilter('weekly')" id="filter-weekly" class="px-3 py-1 text-white text-[10px] font-bold">WEEKLY</button>
+                        <button onclick="setSalesFilter('monthly')" id="filter-monthly" class="px-3 py-1 text-white text-[10px] font-bold">MONTHLY</button>
+                        <button onclick="setSalesFilter('annually')" id="filter-annually" class="px-3 py-1 text-white text-[10px] font-bold">ANNUALLY</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">TOTAL REVENUE</span>
+                        <h3 id="stat-revenue" class="text-2xl font-extrabold text-slate-900 mt-1">₱ 0.00</h3>
+                        <span class="text-[10px] text-emerald-600 font-semibold"><i class="fa-solid fa-arrow-up"></i> Live synced with sales</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">ORDERS COMPLETED</span>
+                        <h3 id="stat-orders" class="text-2xl font-extrabold text-slate-900 mt-1">0 Orders</h3>
+                        <span class="text-[10px] text-blue-600 font-semibold">Avg prep: 4.2 mins</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 bg-gradient-to-br from-amber-50 to-orange-50">
+                        <span class="text-[10px] text-amber-800 font-bold uppercase tracking-wider block">🤖 AI BEST-SELLING ITEM</span>
+                        <h3 id="stat-bestseller" class="text-sm font-extrabold text-slate-900 mt-1 truncate">None Yet</h3>
+                        <span class="text-[10px] text-amber-700 font-semibold">Based on order history</span>
+                    </div>
+                </div>
+
+                <!-- Graphs & Category Share Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                        <h3 id="chart-title" class="font-bold text-slate-800 text-xs uppercase tracking-wider">Hourly Sales Trend (Daily)</h3>
+                        <div id="chart-container" class="h-44 bg-orange-50/60 rounded-xl border border-dashed border-orange-300 p-3 flex flex-col justify-end"></div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Menu Category Shares</h3>
+                        <div class="space-y-2.5 pt-2 text-xs">
+                            <div>
+                                <div class="flex justify-between mb-1"><span>Chicken Meals</span> <strong class="text-orange-600">65%</strong></div>
+                                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div class="bg-orange-500 h-full w-[65%] rounded-full"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><span>Rice Bowls & Meals</span> <strong class="text-orange-600">20%</strong></div>
+                                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div class="bg-amber-500 h-full w-[20%] rounded-full"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><span>Drinks & Beverages</span> <strong class="text-orange-600">15%</strong></div>
+                                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div class="bg-blue-500 h-full w-[15%] rounded-full"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 flex justify-between items-center">
+                    <span class="font-bold text-slate-800 text-xs">EXPORT SALES REPORT</span>
+                    <div class="flex gap-2">
+                        <button onclick="downloadReport('PDF')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+                        <button onclick="downloadReport('CSV')" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-csv"></i> Download CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. KITCHEN DISPLAY & KANBAN WITH SEARCH & FILTER -->
+            <div id="tab-content-kitchen" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">Kitchen Display & Live Queue</h2>
+                        <span class="text-[10px] text-amber-200">Walk-In POS & Web Orders Synced</span>
+                    </div>
+                    <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                </div>
+
+                <!-- Walk-In Rapid Order Section with Quantity -->
+                <div class="bg-white p-4 rounded-2xl shadow-lg border-2 border-orange-300 space-y-3">
+                    <div class="flex items-center space-x-2 border-b pb-2">
+                        <i class="fa-solid fa-cash-register text-orange-600 text-sm"></i>
+                        <h3 class="font-bold text-slate-900 text-xs uppercase">Walk-In Counter Rapid Order Entry</h3>
+                    </div>
+                    <div class="grid grid-cols-6 gap-3 text-xs items-end">
+                        <div class="col-span-2">
+                            <label class="font-bold text-slate-600 block mb-1">Customer Name</label>
+                            <input type="text" id="wi-customer" placeholder="e.g. Juan" class="w-full bg-slate-50 border rounded-xl p-2.5 outline-none focus:border-orange-500">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="font-bold text-slate-600 block mb-1">Select Menu Item</label>
+                            <select id="wi-item" class="w-full bg-slate-50 border rounded-xl p-2.5 outline-none focus:border-orange-500">
+                                <option value="1 pcs Chicken w/ Java Rice & Gravy">1 pcs Chicken w/ Java Rice & Gravy (₱70)</option>
+                                <option value="2 pcs Chicken w/ Java Rice & Gravy">2 pcs Chicken w/ Java Rice & Gravy (₱120)</option>
+                                <option value="1 pc Chicken BBQ w/ Java Rice">1 pc Chicken BBQ w/ Java Rice (₱75)</option>
+                                <option value="1 pc. Chicken Shiracha w/ Java Rice">1 pc. Chicken Shiracha w/ Java Rice (₱75)</option>
+                                <option value="1 pc. Chicken Teriyaki w/ Java Rice">1 pc. Chicken Teriyaki w/ Java Rice (₱75)</option>
+                                <option value="1 pc. Chicken Garlic Butter w/Java Rice">1 pc. Chicken Garlic Butter w/Java Rice (₱75)</option>
+                                <option value="1 pc. Hungarian Sousage w/ Java Rice">1 pc. Hungarian Sousage w/ Java Rice (₱70)</option>
+                                <option value="Iced Tea (16oz)">Iced Tea (16oz) (₱35)</option>
+                                <option value="Bottled Water">Bottled Water (₱20)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="font-bold text-slate-600 block mb-1">Quantity</label>
+                            <input type="number" id="wi-qty" value="1" min="1" class="w-full bg-slate-50 border rounded-xl p-2.5 text-center">
+                        </div>
+                        <div>
+                            <button onclick="submitWalkInOrder()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs shadow transition">
+                                <i class="fa-solid fa-plus-circle"></i> Inject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Filter & Search Bar -->
+                <div class="bg-white p-3 rounded-xl shadow border flex gap-3 text-xs">
+                    <input type="text" id="kitchen-search" oninput="renderKitchenKanban()" placeholder="Search by Queue # or Customer Name..." class="flex-grow bg-slate-50 border rounded-xl p-2 outline-none focus:border-orange-500">
+                    <select id="kitchen-status-filter" onchange="renderKitchenKanban()" class="bg-slate-50 border rounded-xl p-2 text-slate-700">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="prep">Preparing</option>
+                        <option value="ready">Ready for Pickup</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-amber-100/90 p-3 rounded-2xl border border-orange-300 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-orange-900">
+                            <span>PENDING</span>
+                            <span id="count-pending" class="bg-orange-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-pending" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-blue-50/90 p-3 rounded-2xl border border-blue-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-blue-900">
+                            <span>PREPARING</span>
+                            <span id="count-prep" class="bg-blue-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-prep" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-emerald-900">
+                            <span>FOR PICKUP</span>
+                            <span id="count-ready" class="bg-emerald-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-ready" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. INVENTORY WITH MODAL UI FOR ADDING/EDITING -->
+            <div id="tab-content-inventory" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">Inventory Management</h2>
+                        <span class="text-[10px] text-amber-200">Manage stock quantities, pricing, and dish photos</span>
+                    </div>
+                    <button onclick="openInventoryModalForAdd()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-4 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-plus"></i> Add Item</button>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-orange-600 text-white rounded-lg">
+                                <th class="p-2.5 rounded-l-xl">Dish Photo</th>
+                                <th class="p-2.5">Item Name</th>
+                                <th class="p-2.5">Category</th>
+                                <th class="p-2.5">Price</th>
+                                <th class="p-2.5">Stock</th>
+                                <th class="p-2.5">Status</th>
+                                <th class="p-2.5 rounded-r-xl text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-orange-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. SYSTEM ADMIN (7AM-7PM) -->
+            <div id="tab-content-system" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl">
+                    <h2 class="font-bold text-base">System Administration</h2>
+                    <span class="text-[10px] text-amber-200">Operating hours (7:00 AM - 7:00 PM), staff shifts, and sync</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                        <div class="flex justify-between items-center border-b pb-2">
+                            <h3 class="font-bold text-xs text-slate-800">Staff Shift Management (7AM - 7PM)</h3>
+                            <button onclick="addStaffShift()" class="bg-orange-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold"><i class="fa-solid fa-user-plus"></i> Add Staff</button>
+                        </div>
+                        <div id="staff-roles-list" class="space-y-2 text-xs"></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                        <h3 class="font-bold text-xs text-slate-800 border-b pb-2">System Maintenance</h3>
+                        <button onclick="showToast('Database backup generated successfully.')" class="w-full bg-orange-500 text-white py-2 rounded-xl text-xs font-bold shadow">Trigger Manual Backup</button>
+                        <button onclick="syncSystemSettings()" class="w-full bg-blue-600 text-white py-2 rounded-xl text-xs font-bold shadow"><i class="fa-solid fa-sync"></i> Sync Settings Across Nodes</button>
+                        <button onclick="showToast('IoT ESP32 Hub paired successfully.')" class="w-full bg-slate-800 text-white py-2 rounded-xl text-xs font-bold shadow">Pair IoT ESP32 / Raspberry Pi</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="app-ui.js"></script>
+    <!-- JavaScript Application Logic -->
+    <script>
+        function showToast(message) {
+            appToast(message);
+        }
+
+        let loggedStaffName = localStorage.getItem('logged_employee_name');
+        let loggedStaffId = localStorage.getItem('logged_employee_id');
+        let staffName = loggedStaffName || 'Staff';
+        let staffId = loggedStaffId || 'EMP-2026-001';
+        let staffDisplayEl = document.getElementById('logged-staff-display');
+        if(staffDisplayEl) staffDisplayEl.innerText = `Logged in: ${staffName} (${staffId})`;
+
+        let staffMembers = JSON.parse(localStorage.getItem('cc_staff_shifts') || '[]');
+        if(loggedStaffName && loggedStaffId) {
+            let loggedStaff = staffMembers.find(member => member.id === staffId);
+            if(loggedStaff) loggedStaff.name = staffName;
+            else staffMembers.unshift({ id: staffId, name: staffName, role: "Stall Admin / Kitchen", shift: "Morning (07:00 AM - 01:00 PM)", status: "On Duty" });
+        }
+
+        function saveStaffShifts() {
+            localStorage.setItem('cc_staff_shifts', JSON.stringify(staffMembers));
+        }
+
+        function renderStaffRoles() {
+            let list = document.getElementById('staff-roles-list');
+            if(!list) return;
+            list.innerHTML = '';
+            staffMembers.forEach((s, idx) => {
+                let div = document.createElement('div');
+                div.className = "flex justify-between p-2.5 bg-orange-50 rounded-xl items-center";
+                div.innerHTML = `
+                    <div><strong>${s.name}</strong> <span class="text-[10px] text-slate-400 block">${s.role} | ${s.shift}</span></div> 
+                    <div class="flex items-center space-x-2">
+                        <select onchange="updateStaffShiftStatus(${idx}, this.value)" class="bg-white border rounded p-1 text-[10px] font-bold ${s.status === 'On Duty' ? 'text-emerald-600' : 'text-slate-500'}">
+                            <option ${s.status === 'On Duty' ? 'selected' : ''}>On Duty</option>
+                            <option ${s.status === 'Off Duty' ? 'selected' : ''}>Off Duty</option>
+                        </select>
+                        <button onclick="removeStaff(${idx})" class="text-red-500"><i class="fa-solid fa-trash"></i></button>
+                    </div>`;
+                list.appendChild(div);
+            });
+            saveStaffShifts();
+        }
+
+        function updateStaffShiftStatus(idx, val) {
+            staffMembers[idx].status = val;
+            saveStaffShifts();
+            showToast(`Updated shift status for ${staffMembers[idx].name}`);
+        }
+
+        async function addStaffShift() {
+            let name = await appPrompt("Enter staff name:");
+            if(!name) return;
+            let role = await appPrompt("Enter staff role:", "Kitchen Staff");
+            if(!role) return;
+            let shift = await appPrompt("Enter shift:", "07:00 AM - 07:00 PM");
+            if(!shift) return;
+            staffMembers.push({ id: "EMP-" + Math.floor(1000 + Math.random() * 9000), name, role, shift, status: "On Duty" });
+            renderStaffRoles();
+            showToast("New staff added successfully!");
+        }
+
+        function removeStaff(idx) {
+            appConfirm("Remove this staff member?", "Remove Staff").then(confirmed => {
+                if(!confirmed) return;
+                staffMembers.splice(idx, 1);
+                renderStaffRoles();
+                showToast("Staff member removed.");
+            });
+        }
+        renderStaffRoles();
+
+        function syncSystemSettings() {
+            showToast("System settings synchronized successfully across all connected client and kitchen nodes!");
+        }
+
+        let currentSalesFilter = 'daily';
+
+        function setSalesFilter(filter) {
+            currentSalesFilter = filter;
+            ['daily', 'weekly', 'monthly', 'annually'].forEach(f => {
+                document.getElementById(`filter-${f}`).className = "px-3 py-1 text-white text-[10px] font-bold";
+            });
+            document.getElementById(`filter-${filter}`).className = "px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-bold shadow";
+            
+            updateDashboardMetrics();
+        }
+
+        function updateDashboardMetrics() {
+            let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+            let baseRev = history.reduce((total, order) => total + Number(order.total || 0), 0);
+            let baseOrders = history.length;
+
+            let rev = baseRev;
+            let orders = baseOrders;
+
+            let titleEl = document.getElementById('chart-title');
+            let container = document.getElementById('chart-container');
+
+            if(currentSalesFilter === 'daily') {
+                rev = baseRev;
+                orders = baseOrders;
+                titleEl.innerText = "Hourly Sales Trend (Daily)";
+                container.innerHTML = `
+                    <div class="flex items-end justify-between h-32 px-2">
+                        <div class="w-8 bg-orange-300 rounded-t h-8"></div>
+                        <div class="w-8 bg-orange-400 rounded-t h-16"></div>
+                        <div class="w-8 bg-orange-600 rounded-t h-28 relative"><span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-bold text-orange-700">PEAK</span></div>
+                        <div class="w-8 bg-orange-500 rounded-t h-20"></div>
+                        <div class="w-8 bg-orange-400 rounded-t h-12"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-slate-500 font-bold pt-1 border-t">
+                        <span>7:00 AM</span><span>10:00 AM</span><span>12:00 PM</span><span>3:00 PM</span><span>7:00 PM</span>
+                    </div>`;
+            } else if(currentSalesFilter === 'weekly') {
+                titleEl.innerText = "Weekly Sales Trend (Mon - Sun)";
+                container.innerHTML = `
+                    <div class="flex items-end justify-between h-32 px-2">
+                        <div class="w-6 bg-orange-400 rounded-t h-14"></div>
+                        <div class="w-6 bg-orange-500 rounded-t h-20"></div>
+                        <div class="w-6 bg-orange-600 rounded-t h-28"></div>
+                        <div class="w-6 bg-orange-400 rounded-t h-16"></div>
+                        <div class="w-6 bg-orange-500 rounded-t h-24"></div>
+                        <div class="w-6 bg-orange-600 rounded-t h-32"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-slate-500 font-bold pt-1 border-t">
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>`;
+            } else if(currentSalesFilter === 'monthly') {
+                titleEl.innerText = "Monthly Sales Trend (Line Graph over Weeks)";
+                container.innerHTML = `
+                    <div class="h-32 relative flex items-center justify-center">
+                        <svg class="w-full h-full text-orange-600 overflow-visible" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 400 100">
+                            <path d="M 0 80 Q 100 20 200 50 T 400 10"></path>
+                        </svg>
+                        <span class="absolute bottom-1 left-0 text-[9px] font-bold text-slate-400">Week 1</span>
+                        <span class="absolute bottom-1 right-0 text-[9px] font-bold text-slate-400">Week 4</span>
+                    </div>`;
+            } else if(currentSalesFilter === 'annually') {
+                titleEl.innerText = "Annual Sales Trend (Line Graph over Months)";
+                container.innerHTML = `
+                    <div class="h-32 relative flex items-center justify-center">
+                        <svg class="w-full h-full text-orange-600 overflow-visible" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 400 100">
+                            <path d="M 0 90 Q 100 60 200 30 T 400 5"></path>
+                        </svg>
+                        <span class="absolute bottom-1 left-0 text-[9px] font-bold text-slate-400">Jan</span>
+                        <span class="absolute bottom-1 right-0 text-[9px] font-bold text-slate-400">Dec</span>
+                    </div>`;
+            }
+
+            if(baseOrders === 0) container.innerHTML = '<p class="text-center text-slate-400 text-xs">No completed orders yet.</p>';
+            document.getElementById('stat-revenue').innerText = `₱ ${rev.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-orders').innerText = `${orders} Orders`;
+
+            let counts = {};
+            history.forEach(ord => {
+                if(ord.rawItems) {
+                    ord.rawItems.forEach(ri => {
+                        counts[ri.name] = (counts[ri.name] || 0) + ri.qty;
+                    });
+                }
+            });
+
+            let best = "None Yet";
+            let maxQty = 0;
+            for(let [name, qty] of Object.entries(counts)) {
+                if(qty > maxQty) {
+                    maxQty = qty;
+                    best = name;
+                }
+            }
+            document.getElementById('stat-bestseller').innerText = best;
+        }
+
+        function downloadReport(format) {
+            showToast(`Sales report successfully downloaded as ${format}!`);
+        }
+
+        // Inventory Data
+        let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || 'null') || [
+            { id: 1, name: "1 pcs Chicken w/ Java Rice & Gravy", category: "Chicken", price: 70.0, stock: 40, active: true, photo: "🍗" },
+            { id: 2, name: "2 pcs Chicken w/ Java Rice & Gravy", category: "Chicken", price: 120.0, stock: 30, active: true, photo: "🍗" },
+            { id: 3, name: "1 pc Chicken BBQ w/ Java Rice", category: "Chicken", price: 75.0, stock: 35, active: true, photo: "🍱" },
+            { id: 4, name: "1 pc. Chicken Shiracha w/ Java Rice", category: "Chicken", price: 75.0, stock: 25, active: true, photo: "🌶️" },
+            { id: 5, name: "1 pc. Chicken Teriyaki w/ Java Rice", category: "Chicken", price: 75.0, stock: 25, active: true, photo: "🍱" },
+            { id: 6, name: "1 pc. Chicken Garlic Butter w/Java Rice", category: "Chicken", price: 75.0, stock: 30, active: true, photo: "🧈" },
+            { id: 7, name: "1 pc. Hungarian Sousage w/ Java Rice", category: "Meals", price: 70.0, stock: 20, active: true, photo: "🌭" },
+            { id: 8, name: "Iced Tea (16oz)", category: "Drinks", price: 35.0, stock: 100, active: true, photo: "🧋" },
+            { id: 9, name: "Bottled Water", category: "Drinks", price: 20.0, stock: 150, active: true, photo: "💧" },
+            { id: 10, name: "Crispy Chicken Sandwich", category: "Snacks", price: 85.0, stock: 0, active: false, photo: "🍔" }
+        ];
+
+        function saveInventory() {
+            localStorage.setItem('cc_synced_inventory', JSON.stringify(inventoryData));
+        }
+
+        function renderInventory() {
+            let tbody = document.getElementById('inventory-table-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            inventoryData.forEach((item, index) => {
+                let tr = document.createElement('tr');
+                tr.className = "hover:bg-orange-50/50";
+                tr.innerHTML = `
+                    <td class="p-2.5 text-2xl">${item.photo && item.photo.startsWith('data:image/') ? `<img src="${item.photo}" alt="${item.name}" class="inventory-photo">` : (item.photo || '🍲')}</td>
+                    <td class="p-2.5 font-bold text-slate-800">${item.name}</td>
+                    <td class="p-2.5"><span class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-[10px] font-bold">${item.category}</span></td>
+                    <td class="p-2.5">₱${item.price.toFixed(2)}</td>
+                    <td class="p-2.5 font-bold ${item.stock > 0 ? 'text-slate-900' : 'text-red-600'}">${item.stock}</td>
+                    <td class="p-2.5"><input type="checkbox" ${item.active ? 'checked' : ''} onchange="toggleStock(${index})" class="accent-orange-500"></td>
+                    <td class="p-2.5 text-right space-x-2">
+                        <button onclick="openInventoryModalForEdit(${index})" class="text-blue-600"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem(${index})" class="text-red-500"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            saveInventory();
+        }
+
+        function toggleStock(index) {
+            inventoryData[index].active = !inventoryData[index].active;
+            renderInventory();
+            showToast(`Updated status for ${inventoryData[index].name}`);
+        }
+
+        function openInventoryModalForAdd() {
+            document.getElementById('inv-modal-title').innerText = "Add Inventory Item";
+            document.getElementById('inv-edit-index').value = "-1";
+            document.getElementById('inv-form-name').value = "";
+            document.getElementById('inv-form-price').value = "75.00";
+            document.getElementById('inv-form-stock').value = "30";
+            document.getElementById('inv-form-photo').value = "🍗";
+            document.getElementById('inv-form-photo-file').value = "";
+            document.getElementById('modal-inventory-form').classList.remove('hidden');
+        }
+
+        function openInventoryModalForEdit(index) {
+            let item = inventoryData[index];
+            document.getElementById('inv-modal-title').innerText = "Edit Inventory Item";
+            document.getElementById('inv-edit-index').value = index;
+            document.getElementById('inv-form-name').value = item.name;
+            document.getElementById('inv-form-category').value = item.category;
+            document.getElementById('inv-form-price').value = item.price;
+            document.getElementById('inv-form-stock').value = item.stock;
+            document.getElementById('inv-form-photo').value = item.photo || "🍗";
+            document.getElementById('inv-form-photo-file').value = "";
+            document.getElementById('modal-inventory-form').classList.remove('hidden');
+        }
+
+        function closeInventoryModal() {
+            document.getElementById('modal-inventory-form').classList.add('hidden');
+        }
+
+        async function saveInventoryModal() {
+            let idx = parseInt(document.getElementById('inv-edit-index').value);
+            let name = document.getElementById('inv-form-name').value.trim();
+            let category = document.getElementById('inv-form-category').value;
+            let price = parseFloat(document.getElementById('inv-form-price').value);
+            let stock = parseInt(document.getElementById('inv-form-stock').value);
+            let photo = document.getElementById('inv-form-photo').value.trim() || "🍲";
+            let photoFile = document.getElementById('inv-form-photo-file').files[0];
+
+            if(!name || isNaN(price) || isNaN(stock)) {
+                showToast("Please fill in all required fields correctly.");
+                return;
+            }
+
+            if(photoFile) {
+                photo = await new Promise(resolve => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(photoFile);
+                });
+            }
+
+            if(idx === -1) {
+                inventoryData.push({ id: inventoryData.length + 1, name, category, price, stock, active: true, photo });
+                showToast("New item successfully added!");
+            } else {
+                inventoryData[idx].name = name;
+                inventoryData[idx].category = category;
+                inventoryData[idx].price = price;
+                inventoryData[idx].stock = stock;
+                inventoryData[idx].photo = photo;
+                showToast("Inventory item successfully updated!");
+            }
+
+            closeInventoryModal();
+            renderInventory();
+        }
+
+        function deleteItem(index) {
+            appConfirm("Delete this item?", "Delete Item").then(confirmed => {
+                if(!confirmed) return;
+                inventoryData.splice(index, 1);
+                renderInventory();
+                showToast("Item deleted from inventory.");
+            });
+        }
+        renderInventory();
+
+        function submitWalkInOrder() {
+            let cust = document.getElementById('wi-customer').value.trim() || "Walk-In Guest";
+            let item = document.getElementById('wi-item').value;
+            let qty = parseInt(document.getElementById('wi-qty').value) || 1;
+            let type = "Dine-in";
+            let pay = "Cash on Pickup";
+
+            let match = inventoryData.find(i => i.name === item);
+            let unitPrice = match ? match.price : 70.0;
+            let total = unitPrice * qty;
+
+            let queueNumber = Math.floor(100 + Math.random() * 900);
+            let newOrder = {
+                id: String(queueNumber),
+                source: "Walk-In",
+                customerName: cust,
+                type: type,
+                pay: pay,
+                items: `${qty}x ${item}`,
+                rawItems: [{ name: item, qty: qty }],
+                total: total,
+                status: "pending"
+            };
+
+            let existingQueue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+            existingQueue.unshift(newOrder);
+            localStorage.setItem('cc_synced_queue', JSON.stringify(existingQueue));
+
+            document.getElementById('wi-customer').value = '';
+            document.getElementById('wi-qty').value = '1';
+            renderKitchenKanban();
+            showToast(`Walk-In Order #${queueNumber} (${cust}) injected into live queue!`);
+        }
+
+        function renderKitchenKanban() {
+            let pDiv = document.getElementById('kanban-pending');
+            let prDiv = document.getElementById('kanban-prep');
+            let rDiv = document.getElementById('kanban-ready');
+            if(!pDiv || !prDiv || !rDiv) return;
+
+            pDiv.innerHTML = '';
+            prDiv.innerHTML = '';
+            rDiv.innerHTML = '';
+
+            let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+            let searchQuery = document.getElementById('kitchen-search').value.toLowerCase();
+            let statusFilter = document.getElementById('kitchen-status-filter').value;
+
+            let pCount = 0, prCount = 0, rCount = 0;
+
+            queue.forEach(order => {
+                let displayName = order.customerName || "Customer";
+                let sourceTag = order.source === 'Walk-In' ? '<span class="bg-purple-100 text-purple-800 px-1 rounded text-[9px] font-bold">Walk-In</span>' : '<span class="bg-sky-100 text-sky-800 px-1 rounded text-[9px] font-bold">Web</span>';
+                
+                let matchSearch = order.id.includes(searchQuery) || displayName.toLowerCase().includes(searchQuery) || order.items.toLowerCase().includes(searchQuery);
+                if(!matchSearch) return;
+
+                let card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-xl shadow-sm text-xs space-y-1.5 border border-orange-100";
+
+                if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
+                    pCount++;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center"><strong>#${order.id} - ${displayName}</strong> ${sourceTag}</div>
+                        <p class="text-slate-600">${order.items} (${order.type})</p>
+                        <button onclick="updateOrderStatus('${order.id}', 'prep')" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-1.5 rounded-lg font-bold text-[10px] shadow">Accept / Start Prep</button>
+                    `;
+                    pDiv.appendChild(card);
+                } else if(order.status === 'prep' && (statusFilter === 'all' || statusFilter === 'prep')) {
+                    prCount++;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center"><strong>#${order.id} - ${displayName}</strong> ${sourceTag}</div>
+                        <p class="text-slate-600">${order.items} (${order.type})</p>
+                        <p class="text-[10px] text-blue-600 font-bold">🤖 AI ETA: ~3 mins</p>
+                        <button onclick="updateOrderStatus('${order.id}', 'ready')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-lg font-bold text-[10px] shadow">Mark as Ready</button>
+                    `;
+                    prDiv.appendChild(card);
+                } else if(order.status === 'ready' && (statusFilter === 'all' || statusFilter === 'ready')) {
+                    rCount++;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center"><strong>#${order.id} - ${displayName}</strong> ${sourceTag}</div>
+                        <p class="text-slate-600">${order.items} (${order.type})</p>
+                        <button onclick="updateOrderStatus('${order.id}', 'complete')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg font-bold text-[10px] shadow">Complete Order</button>
+                    `;
+                    rDiv.appendChild(card);
+                }
+            });
+
+            document.getElementById('count-pending').innerText = pCount;
+            document.getElementById('count-prep').innerText = prCount;
+            document.getElementById('count-ready').innerText = rCount;
+        }
+
+        function updateOrderStatus(id, newStatus) {
+            let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+            if(newStatus === 'complete') {
+                let order = queue.find(o => o.id === id);
+                if(order) {
+                    if(order.rawItems) {
+                        order.rawItems.forEach(ri => {
+                            let invItem = inventoryData.find(inv => inv.name === ri.name);
+                            if(invItem) {
+                                invItem.stock -= ri.qty;
+                                if(invItem.stock < 0) invItem.stock = 0;
+                            }
+                        });
+                        renderInventory();
+                    }
+
+                    let currentRev = parseFloat(localStorage.getItem('cc_total_revenue') || '0');
+                    let currentOrders = parseInt(localStorage.getItem('cc_completed_orders_count') || '0');
+                    currentRev += (order.total || 70.0);
+                    currentOrders += 1;
+                    localStorage.setItem('cc_total_revenue', currentRev);
+                    localStorage.setItem('cc_completed_orders_count', currentOrders);
+
+                    let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+                    history.push(order);
+                    localStorage.setItem('cc_completed_orders_history', JSON.stringify(history));
+
+                    updateDashboardMetrics();
+                }
+
+                queue = queue.filter(o => o.id !== id);
+                showToast(`Order #${id} completed, stock deducted & revenue updated.`);
+            } else {
+                let order = queue.find(o => o.id === id);
+                if(order) order.status = newStatus;
+                showToast(`[IoT Signal]: Hardware beeper/LED triggered for Order #${id}!`);
+            }
+            localStorage.setItem('cc_synced_queue', JSON.stringify(queue));
+            renderKitchenKanban();
+        }
+
+        setInterval(() => {
+            if(!document.getElementById('tab-content-kitchen').classList.contains('hidden')) {
+                renderKitchenKanban();
+            }
+            updateDashboardMetrics();
+        }, 2000);
+
+        updateDashboardMetrics();
+
+        function switchAdminTab(tab) {
+            ['dashboard', 'kitchen', 'inventory', 'system'].forEach(t => {
+                let content = document.getElementById(`tab-content-${t}`);
+                let nav = document.getElementById(`nav-${t}`);
+                if(content) content.classList.add('hidden');
+                if(nav) nav.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition";
+            });
+            let activeContent = document.getElementById(`tab-content-${tab}`);
+            let activeNav = document.getElementById(`nav-${tab}`);
+            if(activeContent) activeContent.classList.remove('hidden');
+            if(activeNav) activeNav.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 bg-orange-500 text-white shadow-md transition";
+            if(tab === 'kitchen') renderKitchenKanban();
+            if(tab === 'dashboard') updateDashboardMetrics();
+        }
+    </script>
+</body>
+</html>
