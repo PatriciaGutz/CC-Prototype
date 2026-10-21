@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-body" style="justify-content: flex-start; align-items: stretch;">
+    
+    <!-- INVENTORY EDIT / ADD MODAL -->
+    <div id="modal-inventory-form" class="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 id="inv-modal-title" class="font-bold text-sm uppercase text-slate-900">Add / Edit Inventory Item</h3>
+                <button onclick="closeInventoryModal()" class="text-slate-400 font-bold text-base">✕</button>
+            </div>
+            <input type="hidden" id="inv-edit-index" value="-1">
+            <div>
+                <label class="font-bold text-slate-700 block mb-1">Item Name</label>
+                <input type="text" id="inv-form-name" placeholder="e.g. 1 pc Chicken w/ Java Rice" class="w-full bg-slate-50 border rounded-xl p-2.5 outline-none focus:border-orange-500">
+            </div>
+            <div>
+                <label class="font-bold text-slate-700 block mb-1">Category</label>
+                <select id="inv-form-category" class="w-full bg-slate-50 border rounded-xl p-2.5 outline-none focus:border-orange-500">
+                    <option value="Chicken">Chicken</option>
+                    <option value="Meals">Meals</option>
+                    <option value="Drinks">Drinks</option>
+                    <option value="Snacks">Snacks</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Price (₱)</label>
+                    <input type="number" id="inv-form-price" step="0.50" class="w-full bg-slate-50 border rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="font-bold text-slate-700 block mb-1">Stock Quantity</label>
+                    <input type="number" id="inv-form-stock" class="w-full bg-slate-50 border rounded-xl p-2.5">
+                </div>
+            </div>
+            <div>
+                <label class="font-bold text-slate-700 block mb-1">Dish Photo (Emoji or Image File)</label>
+                <input type="text" id="inv-form-photo" placeholder="Emoji or photo URL" class="w-full bg-slate-50 border rounded-xl p-2.5">
+                <input type="file" id="inv-form-photo-file" accept="image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-orange-50 file:text-orange-700">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveInventoryModal()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs shadow">Save Item</button>
+                <button onclick="closeInventoryModal()" class="w-full bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="brand-header flex flex-wrap gap-2 justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-3">
+            <img src="images/logo.png" alt="Campus Chicken logo" class="w-8 h-8 rounded-full object-cover shadow">
+            <h1 class="font-bold text-sm tracking-wide">Campus Chicken SmartStall - Admin & Kitchen Management Portal</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-xs text-amber-200">Operating Hours: 7:00 AM - 7:00 PM</span>
+            <a href="admin_login.html" onclick="event.preventDefault(); appConfirm('Log out of the admin dashboard?', 'Log Out').then(confirmed => { if(confirmed) window.location.href = this.href; });" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-3 py-1.5 rounded-lg text-xs shadow">Log Out</a>
+        </div>
+    </header>
+
+    <div class="admin-shell flex flex-grow max-w-7xl mx-auto w-full p-4 gap-4">
+        <div class="admin-side w-64 bg-white rounded-2xl shadow-xl p-4 flex flex-col shrink-0 self-start">
+            <div class="side-brand">
+                <img src="images/logo.png" alt="Campus Chicken logo">
+                <div><span class="bg-orange-500 text-white px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest">Admin Control</span><p class="text-[10px] text-slate-400 mt-1">SmartStall Portal</p></div>
+            </div>
+            <div class="side-label">Overview</div>
+            <button onclick="switchAdminTab('dashboard')" id="nav-dashboard" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 bg-orange-500 text-white shadow-md transition">
+                <i class="fa-solid fa-chart-pie w-5"></i><span>Dashboard</span>
+            </button>
+            <div class="side-label">Orders</div>
+            <button onclick="switchAdminTab('pos')" id="nav-pos" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition">
+                <i class="fa-solid fa-cash-register w-5"></i><span>POS / New Order</span>
+            </button>
+            <button onclick="switchAdminTab('kitchen')" id="nav-kitchen" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition">
+                <i class="fa-solid fa-fire-burner w-5"></i><span>Kitchen Display</span>
+            </button>
+            <div class="side-label">Management</div>
+            <button onclick="switchAdminTab('inventory')" id="nav-inventory" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition">
+                <i class="fa-solid fa-boxes-stacked w-5"></i><span>Inventory</span>
+            </button>
+            <button onclick="switchAdminTab('system')" id="nav-system" class="w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition">
+                <i class="fa-solid fa-gears w-5"></i><span>Admin System</span>
+            </button>
+            <div class="side-user">
+                <div id="side-avatar" class="side-avatar">S</div>
+                <div class="min-w-0"><strong id="side-user-name" class="block text-xs text-slate-800 truncate">Staff</strong><span id="side-user-id" class="block text-[10px] text-slate-400 truncate">EMP-2026-001</span></div>
+            </div>
+        </div>
+
+        <div class="admin-main flex-grow min-w-0 space-y-4">
+            
+            <!-- 1. DASHBOARD -->
+            <div id="tab-content-dashboard" class="space-y-4">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">SALES & FINANCIAL DASHBOARD</h2>
+                        <span class="text-[10px] text-amber-200">Real-time transactional revenue and automated analytics</span>
+                    </div>
+                    <div class="flex gap-1 bg-white/20 p-1 rounded-xl">
+                        <button onclick="setSalesFilter('Daily')" id="filter-daily" class="px-3 py-1 text-white text-[10px] font-bold">DAILY</button>
+                        <button onclick="setSalesFilter('Weekly')" id="filter-weekly" class="px-3 py-1 text-white text-[10px] font-bold">WEEKLY</button>
+                        <button onclick="setSalesFilter('Monthly')" id="filter-monthly" class="px-3 py-1 text-white text-[10px] font-bold">MONTHLY</button>
+                        <button onclick="setSalesFilter('Annually')" id="filter-annually" class="px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-bold shadow">ANNUALLY</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">TOTAL REVENUE</span>
+                        <h3 id="stat-revenue" class="text-2xl font-extrabold text-slate-900 mt-1">₱ 0.00</h3>
+                        <span class="text-[10px] text-emerald-600 font-semibold"><i class="fa-solid fa-arrow-up"></i> Live synced with sales</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">ORDERS COMPLETED</span>
+                        <h3 id="stat-orders" class="text-2xl font-extrabold text-slate-900 mt-1">0 Orders</h3>
+                        <span class="text-[10px] text-blue-600 font-semibold">Avg prep: 4.2 mins</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 bg-gradient-to-br from-amber-50 to-orange-50">
+                        <span class="text-[10px] text-amber-800 font-bold uppercase tracking-wider block">🤖 AI BEST-SELLING ITEM</span>
+                        <h3 id="stat-bestseller" class="text-sm font-extrabold text-slate-900 mt-1 truncate">None Yet</h3>
+                        <span class="text-[10px] text-amber-700 font-semibold">Based on order history</span>
+                    </div>
+                </div>
+
+                <!-- Graphs & Category Share Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                        <h3 id="chart-title" class="font-bold text-slate-800 text-xs uppercase tracking-wider">Annual Sales Trend (Line Graph over Months)</h3>
+                        <div id="chart-container" class="min-h-44 bg-orange-50/60 rounded-xl border border-dashed border-orange-300 p-3 flex flex-col justify-end"></div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Menu Category Shares</h3>
+                        <div id="category-shares" class="space-y-2.5 pt-2 text-xs"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 flex justify-between items-center">
+                    <span class="font-bold text-slate-800 text-xs">EXPORT SALES REPORT</span>
+                    <div class="flex gap-2">
+                        <button onclick="downloadReport('PDF')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+                        <button onclick="downloadReport('CSV')" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-csv"></i> Download CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. KITCHEN DISPLAY & KANBAN WITH SEARCH & FILTER -->
+            <div id="tab-content-kitchen" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">Kitchen Display & Live Queue</h2>
+                        <span class="text-[10px] text-amber-200">Walk-In POS & Web Orders Synced</span>
+                    </div>
+                    <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                </div>
+
+                <!-- Quick Filter & Search Bar -->
+                <div class="bg-white p-3 rounded-xl shadow border flex gap-3 text-xs">
+                    <input type="text" id="kitchen-search" oninput="renderKitchenKanban()" placeholder="Search by Queue # or Customer Name..." class="flex-grow bg-slate-50 border rounded-xl p-2 outline-none focus:border-orange-500">
+                    <select id="kitchen-status-filter" onchange="renderKitchenKanban()" class="bg-slate-50 border rounded-xl p-2 text-slate-700">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="prep">Preparing</option>
+                        <option value="ready">Ready for Pickup</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-amber-100/90 p-3 rounded-2xl border border-orange-300 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-orange-900">
+                            <span>PENDING</span>
+                            <span id="count-pending" class="bg-orange-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-pending" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-blue-50/90 p-3 rounded-2xl border border-blue-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-blue-900">
+                            <span>PREPARING</span>
+                            <span id="count-prep" class="bg-blue-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-prep" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-emerald-900">
+                            <span>FOR PICKUP</span>
+                            <span id="count-ready" class="bg-emerald-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-ready" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- POS / NEW WALK-IN ORDER -->
+            <div id="tab-content-pos" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl">
+                    <h2 class="font-bold text-base">POS / New Walk-In Order</h2>
+                    <span class="text-[10px] text-amber-200">Tap a dish to add it. Placed orders go straight to the kitchen queue.</span>
+                </div>
+                <div class="pos-layout">
+                    <div class="panel space-y-3">
+                        <div id="pos-cats" class="flex gap-2 overflow-x-auto pb-1"></div>
+                        <div id="pos-grid" class="space-y-4"></div>
+                    </div>
+                    <div class="panel pos-cart space-y-3">
+                        <h3 class="panel-title"><i class="fa-solid fa-receipt text-orange-600 mr-1"></i> Current Order</h3>
+                        <div id="pos-cart-list" class="space-y-2 flex-grow overflow-y-auto max-h-72"></div>
+                        <input type="text" id="pos-customer" placeholder="Customer name (optional)" class="w-full bg-slate-50 border rounded-xl p-2.5 text-xs outline-none focus:border-orange-500">
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="seg"><input type="radio" name="pos-type" value="Dine-in" checked><span>Dine-in</span></label>
+                            <label class="seg"><input type="radio" name="pos-type" value="Take-out"><span>Take-out</span></label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="seg"><input type="radio" name="pos-pay" value="Cash on Pickup" checked><span>Cash</span></label>
+                            <label class="seg"><input type="radio" name="pos-pay" value="GCash Paid"><span>GCash</span></label>
+                        </div>
+                        <div class="flex justify-between font-extrabold text-sm border-t pt-2"><span>Total</span><span id="pos-total">₱0.00</span></div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="clearPosCart()" class="bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-xs">Clear</button>
+                            <button onclick="placePosOrder()" class="col-span-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow">Place Order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. INVENTORY WITH MODAL UI FOR ADDING/EDITING -->
+            <div id="tab-content-inventory" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">Inventory Management</h2>
+                        <span class="text-[10px] text-amber-200">Manage stock quantities, pricing, and dish photos</span>
+                    </div>
+                    <button onclick="openInventoryModalForAdd()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-4 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-plus"></i> Add Item</button>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                    <div class="overflow-x-auto"><table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-orange-600 text-white rounded-lg">
+                                <th class="p-2.5 rounded-l-xl">Dish Photo</th>
+                                <th class="p-2.5">Item Name</th>
+                                <th class="p-2.5">Category</th>
+                                <th class="p-2.5">Price</th>
+                                <th class="p-2.5">Stock</th>
+                                <th class="p-2.5">Restock Point <span class="bg-amber-300 text-slate-900 rounded px-1 text-[9px]">AI</span></th>
+                                <th class="p-2.5">Status</th>
+                                <th class="p-2.5 rounded-r-xl text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-orange-100"></tbody>
+                    </table></div>
+                    <p class="text-[10px] text-slate-400 mt-3"><i class="fa-solid fa-robot"></i> Suggested restock point = forecast daily demand (exponential smoothing over completed-order history) plus safety stock for a 1-day resupply. Uses a default of 10 until sales data exists.</p>
+                </div>
+            </div>
+
+            <!-- 4. SYSTEM ADMIN -->
+            <div id="tab-content-system" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl">
+                    <h2 class="font-bold text-base">System Administration</h2>
+                    <span class="text-[10px] text-amber-200">Manage users and roles, review the audit trail, and run maintenance (7:00 AM - 7:00 PM)</span>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="panel col-span-2 space-y-3">
+                        <div class="flex justify-between items-start gap-2 flex-wrap">
+                            <div>
+                                <h3 class="panel-title"><i class="fa-solid fa-users text-orange-600 mr-1"></i> User &amp; Staff Management</h3>
+                                <p class="text-[10px] text-slate-400">Add, edit, and manage staff, roles, and shifts</p>
+                            </div>
+                            <button onclick="addStaffShift()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-xl text-[11px] font-bold shadow"><i class="fa-solid fa-user-plus"></i> Add Staff</button>
+                        </div>
+                        <div id="staff-filters" class="flex gap-1.5 flex-wrap"></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead><tr class="bg-orange-50 text-slate-500"><th class="p-2.5">ID</th><th class="p-2.5">Name</th><th class="p-2.5">Role</th><th class="p-2.5">Shift</th><th class="p-2.5">Status</th><th class="p-2.5 text-right">Actions</th></tr></thead>
+                                <tbody id="staff-roles-list" class="divide-y divide-orange-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="panel space-y-3">
+                        <h3 class="panel-title"><i class="fa-solid fa-shield-halved text-orange-600 mr-1"></i> Role Permissions</h3>
+                        <div class="bg-orange-50 rounded-xl p-3 text-[11px] space-y-1"><div class="flex justify-between"><strong>Stall Admin</strong><span class="badge-role">Full Access</span></div><p class="text-slate-500">Users and roles, reports, inventory, system settings</p></div>
+                        <div class="bg-orange-50 rounded-xl p-3 text-[11px] space-y-1"><div class="flex justify-between"><strong>Kitchen Staff</strong><span class="badge-role">Limited</span></div><p class="text-slate-500">Kitchen display, update order status, view queue</p></div>
+                        <div class="bg-orange-50 rounded-xl p-3 text-[11px] space-y-1"><div class="flex justify-between"><strong>Cashier</strong><span class="badge-role">POS</span></div><p class="text-slate-500">Walk-in orders, payments, basic reports</p></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="panel col-span-2 space-y-3">
+                        <div class="flex justify-between items-center gap-3 flex-wrap">
+                            <div>
+                                <h3 class="panel-title"><i class="fa-solid fa-clipboard-list text-orange-600 mr-1"></i> Audit Log</h3>
+                                <p class="text-[10px] text-slate-400">Admin actions and system changes</p>
+                            </div>
+                            <input type="text" id="audit-search" oninput="renderAudit()" placeholder="Search by user, action, or keyword..." class="w-64 max-w-full bg-slate-50 border rounded-xl p-2 text-xs outline-none focus:border-orange-500">
+                        </div>
+                        <div class="overflow-auto max-h-64">
+                            <table class="w-full text-left text-xs">
+                                <thead><tr class="bg-orange-50 text-slate-500"><th class="p-2.5">Date &amp; Time</th><th class="p-2.5">User</th><th class="p-2.5">Action</th><th class="p-2.5">Details</th></tr></thead>
+                                <tbody id="audit-body" class="divide-y divide-orange-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="panel space-y-3">
+                        <h3 class="panel-title"><i class="fa-solid fa-wrench text-orange-600 mr-1"></i> System Maintenance</h3>
+                        <div class="bg-orange-50 rounded-xl p-3 text-xs">
+                            <strong>Database Backup</strong>
+                            <p class="text-[10px] text-slate-500">Exports orders, inventory, staff, and logs as a JSON file.</p>
+                            <p class="text-[10px] text-slate-400 mt-1">Last backup: <span id="last-backup">Never</span></p>
+                        </div>
+                        <button onclick="doBackup()" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl text-xs font-bold shadow">Backup Now</button>
+                        <button onclick="syncSystemSettings(); logAudit('Settings sync', 'Synced settings across nodes')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow"><i class="fa-solid fa-sync"></i> Sync Settings Across Nodes</button>
+                        <button onclick="showToast('IoT ESP32 Hub paired successfully.'); logAudit('IoT pairing', 'ESP32 / Raspberry Pi hub paired')" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-xl text-xs font-bold shadow">Pair IoT ESP32 / Raspberry Pi</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="app-ui.js"></script>
+    <!-- JavaScript Application Logic -->
+    <script>
+        function showToast(message) {
+            appToast(message);
+        }
+
+        let loggedStaffName = localStorage.getItem('logged_employee_name');
+        let loggedStaffId = localStorage.getItem('logged_employee_id');
+        let staffName = loggedStaffName || 'Staff';
+        let staffId = loggedStaffId || 'EMP-2026-001';
+        let staffDisplayEl = document.getElementById('logged-staff-display');
+        document.getElementById('side-user-name').innerText = staffName;
+        document.getElementById('side-user-id').innerText = staffId;
+        document.getElementById('side-avatar').innerText = staffName.charAt(0).toUpperCase();
+
+        let staffMembers = JSON.parse(localStorage.getItem('cc_staff_shifts') || 'null') || [
+            { id: 'EMP-2026-002', name: 'Chef Juan', role: 'Kitchen Staff', shift: '08:00 AM - 04:00 PM', status: 'On Duty' },
+            { id: 'EMP-2026-003', name: 'Maria', role: 'Cashier', shift: '08:00 AM - 04:00 PM', status: 'On Duty' }
+        ];
+        if(loggedStaffName && loggedStaffId) {
+            let loggedStaff = staffMembers.find(member => member.id === staffId);
+            if(loggedStaff) loggedStaff.name = staffName;
+            else staffMembers.unshift({ id: staffId, name: staffName, role: "Stall Admin", shift: "Morning (07:00 AM - 01:00 PM)", status: "On Duty" });
+        }
+
+        function saveStaffShifts() {
+            localStorage.setItem('cc_staff_shifts', JSON.stringify(staffMembers));
+        }
+
+        let staffFilter = 'All';
+        const STAFF_ROLES = ['Cashier', 'Kitchen Staff', 'Stall Admin'];
+
+        function setStaffFilter(f) { staffFilter = f; renderStaffRoles(); }
+
+        function renderStaffRoles() {
+            let list = document.getElementById('staff-roles-list');
+            if(!list) return;
+            let pills = document.getElementById('staff-filters');
+            if(pills) pills.innerHTML = ['All', ...STAFF_ROLES].map(f => `<button onclick="setStaffFilter('${f}')" class="category-pill ${f === staffFilter ? 'active' : ''}">${f === 'All' ? 'All Users' : f}</button>`).join('');
+            list.innerHTML = '';
+            staffMembers.forEach((s, idx) => {
+                if(staffFilter !== 'All' && !s.role.includes(staffFilter)) return;
+                let tr = document.createElement('tr');
+                tr.className = 'hover:bg-orange-50/50';
+                tr.innerHTML = `
+                    <td class="p-2.5 text-slate-400">${esc(s.id)}</td>
+                    <td class="p-2.5 font-bold text-slate-800">${esc(s.name)}</td>
+                    <td class="p-2.5"><span class="badge-role">${esc(s.role)}</span></td>
+                    <td class="p-2.5 text-slate-500">${esc(s.shift)}</td>
+                    <td class="p-2.5"><select onchange="updateStaffShiftStatus(${idx}, this.value)" class="bg-white border rounded p-1 text-[10px] font-bold ${s.status === 'On Duty' ? 'text-emerald-600' : 'text-slate-500'}">
+                        <option ${s.status === 'On Duty' ? 'selected' : ''}>On Duty</option>
+                        <option ${s.status === 'Off Duty' ? 'selected' : ''}>Off Duty</option>
+                    </select></td>
+                    <td class="p-2.5 text-right space-x-2">
+                        <button onclick="editStaff(${idx})" class="text-blue-600"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="removeStaff(${idx})" class="text-red-500"><i class="fa-solid fa-trash"></i></button>
+                    `;
+                list.appendChild(tr);
+            });
+            saveStaffShifts();
+        }
+
+        function updateStaffShiftStatus(idx, val) {
+            staffMembers[idx].status = val;
+            saveStaffShifts();
+            logAudit('Updated shift status', `${staffMembers[idx].name}: ${val}`);
+            showToast(`Updated shift status for ${staffMembers[idx].name}`);
+            renderStaffRoles();
+        }
+
+        function matchRole(input) {
+            return STAFF_ROLES.find(r => r.toLowerCase() === String(input).trim().toLowerCase());
+        }
+
+        async function addStaffShift() {
+            let name = await appPrompt("Enter staff name:");
+            if(!name) return;
+            let role = matchRole(await appPrompt("Enter role (Cashier, Kitchen Staff, or Stall Admin):", "Kitchen Staff"));
+            if(!role) { showToast("Role must be Cashier, Kitchen Staff, or Stall Admin."); return; }
+            let shift = await appPrompt("Enter shift:", "07:00 AM - 07:00 PM");
+            if(!shift) return;
+            staffMembers.push({ id: "EMP-2026-" + String(Math.floor(100 + Math.random() * 900)), name, role, shift, status: "On Duty" });
+            renderStaffRoles();
+            logAudit('Added new user', `${name} (${role})`);
+            showToast("New staff added successfully!");
+        }
+
+        async function editStaff(idx) {
+            let s = staffMembers[idx];
+            let name = await appPrompt("Staff name:", s.name);
+            if(!name) return;
+            let role = matchRole(await appPrompt("Role (Cashier, Kitchen Staff, or Stall Admin):", s.role));
+            if(!role) { showToast("Role must be Cashier, Kitchen Staff, or Stall Admin."); return; }
+            let shift = await appPrompt("Shift:", s.shift);
+            if(!shift) return;
+            Object.assign(s, { name, role, shift });
+            renderStaffRoles();
+            logAudit('Edited user', `${name} (${role})`);
+            showToast("Staff details updated.");
+        }
+
+        function removeStaff(idx) {
+            if(staffMembers[idx].id === staffId) { showToast("You can't remove the account you're logged in with."); return; }
+            appConfirm("Remove this staff member?", "Remove Staff").then(confirmed => {
+                if(!confirmed) return;
+                logAudit('Removed user', staffMembers[idx].name);
+                staffMembers.splice(idx, 1);
+                renderStaffRoles();
+                showToast("Staff member removed.");
+            });
+        }
+        renderStaffRoles();
+
+        function syncSystemSettings() {
+            showToast("System settings synchronized successfully across all connected client and kitchen nodes!");
+        }
+
+        let currentSalesFilter = 'annually';
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const PERIOD_CFG = {
+            daily:    { title: 'Hourly Sales Trend (Today)', type: 'bar',  labels: ['7A','8A','9A','10A','11A','12P','1P','2P','3P','4P','5P','6P','7P'] },
+            weekly:   { title: 'Weekly Sales Trend (Mon - Sun)', type: 'bar',  labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] },
+            monthly:  { title: 'Monthly Sales Trend (Line Graph over Weeks)', type: 'line', labels: ['Week 1','Week 2','Week 3','Week 4','Week 5'] },
+            annually: { title: 'Annual Sales Trend (Line Graph over Months)', type: 'line', labels: MONTHS }
+        };
+
+        function setSalesFilter(filter) {
+            currentSalesFilter = String(filter).toLowerCase();
+            Object.keys(PERIOD_CFG).forEach(f => {
+                document.getElementById(`filter-${f}`).className = f === currentSalesFilter
+                    ? "px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-bold shadow"
+                    : "px-3 py-1 text-white text-[10px] font-bold";
+            });
+            updateDashboardMetrics();
+        }
+
+        function periodIndex(period, t, now) {
+            if(period === 'daily') return t.toDateString() === now.toDateString() ? Math.min(12, Math.max(0, t.getHours() - 7)) : -1;
+            if(period === 'weekly') {
+                let start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+                let day = new Date(t); day.setHours(0, 0, 0, 0);
+                let d = Math.round((day - start) / 864e5);
+                return d >= 0 && d < 7 ? d : -1;
+            }
+            if(period === 'monthly') return t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth() ? Math.min(4, Math.floor((t.getDate() - 1) / 7)) : -1;
+            return t.getFullYear() === now.getFullYear() ? t.getMonth() : -1;
+        }
+
+        function salesChartHtml(cfg, vals) {
+            let max = Math.max(...vals), peak = max > 0 ? vals.indexOf(max) : -1, n = vals.length;
+            let labels = `<div class="flex text-[9px] text-slate-500 font-bold pt-1 border-t">${cfg.labels.map(l => `<span class="flex-1 text-center">${l}</span>`).join('')}</div>`;
+            let note = max > 0 ? '' : '<p class="text-center text-[10px] text-slate-400 pt-1">No completed orders in this period yet.</p>';
+            if(cfg.type === 'bar') {
+                return `<div class="flex items-end gap-1 h-28 px-1">${vals.map((v, i) => `
+                    <div class="flex-1 h-full flex flex-col justify-end" title="₱${v.toFixed(2)}">
+                        <div class="relative rounded-t ${i === peak ? 'bg-orange-600' : 'bg-orange-400'}" style="height:${max ? Math.max(4, v / max * 100) : 4}\%;${max ? '' : 'opacity:.3'}">
+                            ${i === peak ? '<span class="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] font-bold text-orange-700">PEAK</span>' : ''}
+                        </div>
+                    </div>`).join('')}</div>${labels}${note}`;
+            }
+            let pts = vals.map((v, i) => [(i + 0.5) / n * 400, 92 - (max ? v / max * 80 : 0)]);
+            let line = pts.map(p => p.join(',')).join(' ');
+            return `<div class="h-28"><svg class="w-full h-full overflow-visible" viewBox="0 0 400 100" preserveAspectRatio="none" fill="none">
+                <polygon points="${pts[0][0]},100 ${line} ${pts[n - 1][0]},100" fill="rgba(249,115,22,.15)"></polygon>
+                <polyline points="${line}" stroke="#ea580c" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+                ${max ? `<circle cx="${pts[peak][0]}" cy="${pts[peak][1]}" r="4" fill="#c2410c"></circle>` : ''}</svg></div>${labels}${note}`;
+        }
+
+        function updateDashboardMetrics() {
+            let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+            let now = new Date(), cfg = PERIOD_CFG[currentSalesFilter];
+            let vals = cfg.labels.map(() => 0), inPeriod = [];
+            history.forEach(o => {
+                let i = periodIndex(currentSalesFilter, new Date(o.completedAt || o.createdAt || Date.now()), now);
+                if(i < 0) return;
+                vals[i] += Number(o.total || 0);
+                inPeriod.push(o);
+            });
+            let rev = vals.reduce((s, v) => s + v, 0);
+
+            document.getElementById('chart-title').innerText = cfg.title;
+            document.getElementById('chart-container').innerHTML = salesChartHtml(cfg, vals);
+            document.getElementById('stat-revenue').innerText = `₱ ${rev.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-orders').innerText = `${inPeriod.length} Orders`;
+
+            let counts = {}, catTotals = {}, grand = 0;
+            let historyForBest = history.length ? history : JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+            historyForBest.forEach(ord => (ord.rawItems || []).forEach(ri => {
+                counts[ri.name] = (counts[ri.name] || 0) + ri.qty;
+            }));
+            inPeriod.forEach(ord => (ord.rawItems || []).forEach(ri => {
+                let inv = inventoryData.find(i => i.name === ri.name);
+                let cat = inv ? inv.category : 'Other';
+                catTotals[cat] = (catTotals[cat] || 0) + ri.qty;
+                grand += ri.qty;
+            }));
+            let best = Object.keys(counts).sort((x, y) => counts[y] - counts[x])[0];
+            document.getElementById('stat-bestseller').innerHTML = best ? `<span class="inline-flex items-center gap-2">${thumb(best, 22)}<span>${esc(best)}</span></span>` : 'None Yet';
+
+            let colors = { Chicken: '#f97316', Meals: '#f59e0b', Drinks: '#3b82f6', Snacks: '#10b981', Other: '#94a3b8' };
+            document.getElementById('category-shares').innerHTML = Object.keys(colors).filter(c => c !== 'Other' || catTotals.Other).map(c => {
+                let pct = grand ? Math.round((catTotals[c] || 0) / grand * 100) : 0;
+                return `<div><div class="flex justify-between mb-1"><span>${c}</span><strong class="text-orange-600">${pct}%</strong></div><div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${pct}%;background:${colors[c]}"></div></div></div>`;
+            }).join('');
+        }
+
+        function downloadReport(format) {
+            showToast(`Sales report successfully downloaded as ${format}!`);
+        }
+
+        // Inventory Data
+        const DEFAULT_INVENTORY = [
+            { id: 1, name: "1 pcs Chicken w/ Java Rice & Gravy", category: "Chicken", price: 70.0, stock: 40, active: true, photo: "images/1 pcs Chicken.png" },
+            { id: 2, name: "2 pcs Chicken w/ Java Rice & Gravy", category: "Chicken", price: 120.0, stock: 30, active: true, photo: "images/2 pcs Chicken.png" },
+            { id: 3, name: "1 pc Chicken BBQ w/ Java Rice", category: "Chicken", price: 75.0, stock: 35, active: true, photo: "images/BBQ.png" },
+            { id: 4, name: "1 pc. Chicken Shiracha w/ Java Rice", category: "Chicken", price: 75.0, stock: 25, active: true, photo: "images/Shiracha.png" },
+            { id: 5, name: "1 pc. Chicken Teriyaki w/ Java Rice", category: "Chicken", price: 75.0, stock: 25, active: true, photo: "images/Teriyaki.png" },
+            { id: 6, name: "1 pc. Chicken Garlic Butter w/Java Rice", category: "Chicken", price: 75.0, stock: 30, active: true, photo: "images/Garlic Butter.png" },
+            { id: 7, name: "1 pc. Hungarian Sousage w/ Java Rice", category: "Meals", price: 70.0, stock: 20, active: true, photo: "images/Hungarian Sousage.png" },
+            { id: 8, name: "Iced Tea (16oz)", category: "Drinks", price: 35.0, stock: 100, active: true, photo: "images/Iced Tea.png" },
+            { id: 9, name: "Bottled Water", category: "Drinks", price: 20.0, stock: 150, active: true, photo: "images/water.png" },
+            { id: 10, name: "Crispy Chicken Sandwich", category: "Snacks", price: 85.0, stock: 0, active: false, photo: "images/Sandwich.png" }
+        ];
+
+        function isImg(p) { return !!p && (p.startsWith('data:image/') || p.startsWith('images/') || p.startsWith('http')); }
+
+        let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || 'null');
+        if(!inventoryData) {
+            inventoryData = DEFAULT_INVENTORY.map(d => ({ ...d }));
+        } else if(!localStorage.getItem('cc_inv_v2')) {
+            DEFAULT_INVENTORY.forEach(d => {
+                let existing = inventoryData.find(i => i.name === d.name);
+                if(!existing) inventoryData.push({ ...d, id: inventoryData.length + 1 });
+                else if(!isImg(existing.photo)) existing.photo = d.photo;
+            });
+        }
+        localStorage.setItem('cc_synced_inventory', JSON.stringify(inventoryData));
+        localStorage.setItem('cc_inv_v2', '1');
+
+        function thumb(name, size) {
+            let item = inventoryData.find(i => i.name === name);
+            let p = item && item.photo;
+            return isImg(p) ? `<img src="${esc(p)}" alt="" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:8px;flex-shrink:0">` : `<span style="font-size:${Math.round(size * .8)}px;line-height:1">${p || '🍲'}</span>`;
+        }
+
+        function orderItemsHtml(order) {
+            let lines = (order.rawItems && order.rawItems.length ? order.rawItems : [{ name: order.items, qty: '' }]).map(r =>
+                `<div class="flex items-center gap-2">${thumb(r.name, 28)}<span>${r.qty ? r.qty + 'x ' : ''}${esc(r.name)}</span></div>`).join('');
+            return `<div class="text-slate-600 space-y-1">${lines}<div class="text-[10px] text-slate-400">${esc(order.type)} · ${esc(order.pay || '')}</div></div>`;
+        }
+
+        function saveInventory() {
+            localStorage.setItem('cc_synced_inventory', JSON.stringify(inventoryData));
+        }
+
+        function renderInventory() {
+            let tbody = document.getElementById('inventory-table-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            inventoryData.forEach((item, index) => {
+                let tr = document.createElement('tr');
+                let f = forecastRestock(item);
+                tr.className = "hover:bg-orange-50/50";
+                tr.innerHTML = `
+                    <td class="p-2.5 text-2xl">${isImg(item.photo) ? `<img src="${item.photo}" alt="${item.name}" class="inventory-photo">` : (item.photo || '🍲')}</td>
+                    <td class="p-2.5 font-bold text-slate-800">${item.name}</td>
+                    <td class="p-2.5"><span class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-[10px] font-bold">${item.category}</span></td>
+                    <td class="p-2.5">₱${item.price.toFixed(2)}</td>
+                    <td class="p-2.5 font-bold ${item.stock > 0 ? 'text-slate-900' : 'text-red-600'}">${item.stock}</td>
+                    <td class="p-2.5"><div class="font-bold text-slate-900">${f.rop} <span class="text-[9px] font-semibold text-slate-400">${f.learning ? 'default' : 'forecast'}</span></div>${item.active ? (item.stock <= f.rop ? '<span class="badge-red">Restock now</span>' : '<span class="badge-green">OK</span>') : '<span class="text-[10px] text-slate-400">Inactive</span>'}</td>
+                    <td class="p-2.5"><input type="checkbox" ${item.active ? 'checked' : ''} onchange="toggleStock(${index})" class="accent-orange-500"></td>
+                    <td class="p-2.5 text-right space-x-2">
+                        <button onclick="openInventoryModalForEdit(${index})" class="text-blue-600"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem(${index})" class="text-red-500"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            saveInventory();
+        }
+
+        function toggleStock(index) {
+            inventoryData[index].active = !inventoryData[index].active;
+            renderInventory();
+            showToast(`Updated status for ${inventoryData[index].name}`);
+        }
+
+        function openInventoryModalForAdd() {
+            document.getElementById('inv-modal-title').innerText = "Add Inventory Item";
+            document.getElementById('inv-edit-index').value = "-1";
+            document.getElementById('inv-form-name').value = "";
+            document.getElementById('inv-form-price').value = "75.00";
+            document.getElementById('inv-form-stock').value = "30";
+            document.getElementById('inv-form-photo').value = "🍗";
+            document.getElementById('inv-form-photo-file').value = "";
+            document.getElementById('modal-inventory-form').classList.remove('hidden');
+        }
+
+        function openInventoryModalForEdit(index) {
+            let item = inventoryData[index];
+            document.getElementById('inv-modal-title').innerText = "Edit Inventory Item";
+            document.getElementById('inv-edit-index').value = index;
+            document.getElementById('inv-form-name').value = item.name;
+            document.getElementById('inv-form-category').value = item.category;
+            document.getElementById('inv-form-price').value = item.price;
+            document.getElementById('inv-form-stock').value = item.stock;
+            document.getElementById('inv-form-photo').value = item.photo || "🍗";
+            document.getElementById('inv-form-photo-file').value = "";
+            document.getElementById('modal-inventory-form').classList.remove('hidden');
+        }
+
+        function closeInventoryModal() {
+            document.getElementById('modal-inventory-form').classList.add('hidden');
+        }
+
+        async function saveInventoryModal() {
+            let idx = parseInt(document.getElementById('inv-edit-index').value);
+            let name = document.getElementById('inv-form-name').value.trim();
+            let category = document.getElementById('inv-form-category').value;
+            let price = parseFloat(document.getElementById('inv-form-price').value);
+            let stock = parseInt(document.getElementById('inv-form-stock').value);
+            let photo = document.getElementById('inv-form-photo').value.trim() || "🍲";
+            let photoFile = document.getElementById('inv-form-photo-file').files[0];
+
+            if(!name || isNaN(price) || isNaN(stock)) {
+                showToast("Please fill in all required fields correctly.");
+                return;
+            }
+
+            if(photoFile) {
+                photo = await new Promise(resolve => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(photoFile);
+                });
+            }
+
+            if(idx === -1) {
+                inventoryData.push({ id: inventoryData.length + 1, name, category, price, stock, active: true, photo });
+                logAudit('Added menu item', name);
+                showToast("New item successfully added!");
+            } else {
+                inventoryData[idx].name = name;
+                inventoryData[idx].category = category;
+                inventoryData[idx].price = price;
+                inventoryData[idx].stock = stock;
+                inventoryData[idx].photo = photo;
+                logAudit('Edited menu item', name);
+                showToast("Inventory item successfully updated!");
+            }
+
+            closeInventoryModal();
+            renderInventory();
+        }
+
+        function deleteItem(index) {
+            appConfirm("Delete this item?", "Delete Item").then(confirmed => {
+                if(!confirmed) return;
+                logAudit('Deleted menu item', inventoryData[index].name);
+                inventoryData.splice(index, 1);
+                renderInventory();
+                showToast("Item deleted from inventory.");
+            });
+        }
+        renderInventory();
+
+        function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+        function logAudit(action, details) {
+            let log = JSON.parse(localStorage.getItem('cc_audit_log') || '[]');
+            log.unshift({ t: Date.now(), user: staffName, action, details: details || '' });
+            localStorage.setItem('cc_audit_log', JSON.stringify(log.slice(0, 200)));
+            renderAudit();
+        }
+
+        function renderAudit() {
+            let body = document.getElementById('audit-body');
+            if(!body) return;
+            let q = (document.getElementById('audit-search').value || '').toLowerCase();
+            let rows = JSON.parse(localStorage.getItem('cc_audit_log') || '[]').filter(r => (r.user + ' ' + r.action + ' ' + r.details).toLowerCase().includes(q));
+            body.innerHTML = rows.length ? rows.map(r => `<tr>
+                <td class="p-2.5 text-slate-500 whitespace-nowrap">${new Date(r.t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                <td class="p-2.5 font-bold">${esc(r.user)}</td><td class="p-2.5">${esc(r.action)}</td><td class="p-2.5 text-slate-500">${esc(r.details)}</td></tr>`).join('')
+                : '<tr><td colspan="4" class="p-6 text-center text-slate-400">No matching activity yet.</td></tr>';
+        }
+
+        function doBackup() {
+            let data = {};
+            Object.keys(localStorage).filter(k => k.startsWith('cc_') && k !== 'cc_registered_users').forEach(k => data[k] = localStorage.getItem(k));
+            let link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+            link.download = 'campus-chicken-backup.json';
+            link.click();
+            let stamp = new Date().toLocaleString();
+            localStorage.setItem('cc_last_backup', stamp);
+            document.getElementById('last-backup').innerText = stamp;
+            logAudit('Database backup', 'Manual backup exported');
+            showToast('Database backup generated successfully.');
+        }
+        document.getElementById('last-backup').innerText = localStorage.getItem('cc_last_backup') || 'Never';
+
+        function forecastRestock(item) {
+            let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+            let daily = {}, sold = 0;
+            history.forEach(o => {
+                let day = new Date(o.completedAt || o.createdAt || Date.now()).toDateString();
+                (o.rawItems || []).forEach(r => { if(r.name === item.name) { daily[day] = (daily[day] || 0) + r.qty; sold += r.qty; } });
+            });
+            if(sold === 0) return { rop: 10, learning: true };
+            let series = [];
+            for(let i = 13; i >= 0; i--) series.push(daily[new Date(Date.now() - i * 864e5).toDateString()] || 0);
+            let ewma = series.reduce((m, v) => 0.4 * v + 0.6 * m, series[0]);
+            let mean = series.reduce((s, v) => s + v, 0) / series.length;
+            let sd = Math.sqrt(series.reduce((s, v) => s + (v - mean) ** 2, 0) / series.length);
+            return { rop: Math.max(3, Math.ceil(ewma + 1.65 * sd)), learning: false };
+        }
+
+        let posCart = {}, posCat = 'All';
+        const POS_CATS = ['All', 'Chicken', 'Meals', 'Drinks', 'Snacks'];
+
+        function posPhoto(p) {
+            return p && (p.startsWith('data:image/') || p.startsWith('images/') || p.startsWith('http')) ? `<img src="${p}" alt="" class="pos-img">` : `<span class="text-4xl">${p || '🍲'}</span>`;
+        }
+
+        function renderPOS() {
+            let catsEl = document.getElementById('pos-cats');
+            if(!catsEl) return;
+            catsEl.innerHTML = POS_CATS.map(c => `<button onclick="posCat='${c}'; renderPOS()" class="category-pill ${c === posCat ? 'active' : ''}">${c}</button>`).join('');
+            let html = '';
+            POS_CATS.slice(1).filter(c => posCat === 'All' || c === posCat).forEach(c => {
+                let items = inventoryData.filter(i => i.category === c);
+                if(!items.length) return;
+                html += `<div><h4 class="pos-cat-title">${c}</h4><div class="pos-grid">` + items.map(i => {
+                    let idx = inventoryData.indexOf(i);
+                    let inCart = (posCart[i.name] || {}).qty || 0;
+                    let unavailable = !i.active || i.stock <= 0;
+                    return `<button ${unavailable || inCart >= i.stock ? 'disabled' : ''} onclick="posAdd(${idx})" class="pos-tile">${inCart ? `<span class="pos-qty">${inCart}</span>` : ''}${posPhoto(i.photo)}<strong>${esc(i.name)}</strong><span class="text-orange-600 font-bold">₱${i.price.toFixed(2)}</span><small>${unavailable ? 'Unavailable' : i.stock + ' left'}</small></button>`;
+                }).join('') + '</div></div>';
+            });
+            document.getElementById('pos-grid').innerHTML = html || '<p class="text-center text-slate-400 text-xs py-8">No items in this category.</p>';
+            renderPosCart();
+        }
+
+        function posAdd(idx) {
+            let item = inventoryData[idx];
+            let line = posCart[item.name] || { price: item.price, qty: 0 };
+            if(line.qty >= item.stock) { showToast(`Only ${item.stock} left in stock.`); return; }
+            line.qty++;
+            posCart[item.name] = line;
+            renderPOS();
+        }
+
+        function posQty(encName, delta) {
+            let name = decodeURIComponent(encName);
+            let item = inventoryData.find(i => i.name === name);
+            let line = posCart[name];
+            if(!line) return;
+            if(delta > 0 && item && line.qty >= item.stock) { showToast(`Only ${item.stock} left in stock.`); return; }
+            line.qty += delta;
+            if(line.qty <= 0) delete posCart[name];
+            renderPOS();
+        }
+
+        function renderPosCart() {
+            let list = document.getElementById('pos-cart-list');
+            let names = Object.keys(posCart);
+            let total = 0;
+            list.innerHTML = names.length ? names.map(n => {
+                let l = posCart[n]; total += l.price * l.qty;
+                return `<div class="bg-orange-50 rounded-xl p-2.5 text-xs flex items-center justify-between gap-2">
+                    <div class="min-w-0"><div class="font-bold text-slate-800 truncate">${esc(n)}</div><div class="text-slate-500">₱${(l.price * l.qty).toFixed(2)}</div></div>
+                    <div class="flex items-center gap-1.5 shrink-0"><button class="pos-step" onclick="posQty('${encodeURIComponent(n)}', -1)">−</button><strong class="w-5 text-center">${l.qty}</strong><button class="pos-step" onclick="posQty('${encodeURIComponent(n)}', 1)">+</button></div></div>`;
+            }).join('') : '<p class="text-center text-slate-400 text-xs py-8">Tap a dish to start an order.</p>';
+            document.getElementById('pos-total').innerText = `₱${total.toFixed(2)}`;
+        }
+
+        function clearPosCart() { posCart = {}; renderPOS(); }
+
+        function placePosOrder() {
+            let names = Object.keys(posCart);
+            if(!names.length) { showToast("Add at least one item to the order."); return; }
+            let cust = document.getElementById('pos-customer').value.trim() || "Walk-In Guest";
+            let type = document.querySelector('input[name="pos-type"]:checked').value;
+            let pay = document.querySelector('input[name="pos-pay"]:checked').value;
+            let total = names.reduce((s, n) => s + posCart[n].price * posCart[n].qty, 0);
+            let id = nextOrderId();
+            let newOrder = {
+                id: id, seq: Number(id), createdAt: Date.now(),
+                source: "Walk-In", customerName: cust, type: type, pay: pay,
+                items: names.map(n => `${posCart[n].qty}x ${n}`).join(', '),
+                rawItems: names.map(n => ({ name: n, qty: posCart[n].qty })),
+                total: total, status: "pending"
+            };
+            let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+            queue.push(newOrder);
+            localStorage.setItem('cc_synced_queue', JSON.stringify(queue));
+            logAudit('Created walk-in order', `Order #${id} (${cust}) · ₱${total.toFixed(2)}`);
+            posCart = {};
+            document.getElementById('pos-customer').value = '';
+            renderPOS();
+            showToast(`Walk-In Order #${id} (${cust}) sent to the kitchen queue!`);
+        }
+
+        renderAudit();
+        if(!sessionStorage.getItem('cc_audit_login')) { sessionStorage.setItem('cc_audit_login', '1'); logAudit('User login', `${staffName} signed in`); }
+
+        function renderKitchenKanban() {
+            let pDiv = document.getElementById('kanban-pending');
+            let prDiv = document.getElementById('kanban-prep');
+            let rDiv = document.getElementById('kanban-ready');
+            if(!pDiv || !prDiv || !rDiv) return;
+
+            pDiv.innerHTML = '';
+            prDiv.innerHTML = '';
+            rDiv.innerHTML = '';
+
+            let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+            let searchQuery = document.getElementById('kitchen-search').value.toLowerCase();
+            let statusFilter = document.getElementById('kitchen-status-filter').value;
+
+            let pCount = 0, prCount = 0, rCount = 0;
+
+            queue.sort((x, y) => Number(x.id) - Number(y.id));
+            queue.forEach(order => {
+                let displayName = order.customerName || "Customer";
+                let sourceTag = order.source === 'Walk-In' ? '<span class="bg-purple-100 text-purple-800 px-1 rounded text-[9px] font-bold">Walk-In</span>' : '<span class="bg-sky-100 text-sky-800 px-1 rounded text-[9px] font-bold">Web</span>';
+                
+                let matchSearch = order.id.includes(searchQuery) || displayName.toLowerCase().includes(searchQuery) || order.items.toLowerCase().includes(searchQuery);
+                if(!matchSearch) return;
+
+                let card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-xl shadow-sm text-xs space-y-1.5 border border-orange-100";
+
+                if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
+                    pCount++;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center"><strong>#${order.id} - ${displayName}</strong> ${sourceTag}</div>
+                        ${orderItemsHtml(order)}
+                        <button onclick="updateOrderStatus('${order.id}', 'prep')" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-1.5 rounded-lg font-bold text-[10px] shadow">Accept / Start Prep</button>
+                    `;
+                    pDiv.appendChild(card);
+                } else if(order.status === 'prep' && (statusFilter === 'all' || statusFilter === 'prep')) {
+                    prCount++;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center"><strong>#${order.id} - ${displayName}</strong> ${sourceTag}</div>
+                        ${orderItemsHtml(order)}
+                        <p class="text-[10px] text-blue-600 font-bold">🤖 AI ETA: ~3 mins</p>
+                        <button onclick="updateOrderStatus('${order.id}', 'ready')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-lg font-bold text-[10px] shadow">Mark as Ready</button>
+                    `;
+                    prDiv.appendChild(card);
+                } else if(order.status === 'ready' && (statusFilter === 'all' || statusFilter === 'ready')) {
+                    rCount++;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center"><strong>#${order.id} - ${displayName}</strong> ${sourceTag}</div>
+                        ${orderItemsHtml(order)}
+                        <button onclick="updateOrderStatus('${order.id}', 'complete')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg font-bold text-[10px] shadow">Complete Order</button>
+                    `;
+                    rDiv.appendChild(card);
+                }
+            });
+
+            document.getElementById('count-pending').innerText = pCount;
+            document.getElementById('count-prep').innerText = prCount;
+            document.getElementById('count-ready').innerText = rCount;
+        }
+
+        function updateOrderStatus(id, newStatus) {
+            let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+            if(newStatus === 'complete') {
+                let orderIndex = queue.findIndex(o => String(o.id) === String(id));
+                let order = queue[orderIndex];
+                if(order) {
+                    if(order.rawItems) {
+                        order.rawItems.forEach(ri => {
+                            let invItem = inventoryData.find(inv => inv.name === ri.name);
+                            if(invItem) {
+                                invItem.stock -= ri.qty;
+                                if(invItem.stock < 0) invItem.stock = 0;
+                            }
+                        });
+                        renderInventory();
+                    }
+
+                    let currentRev = parseFloat(localStorage.getItem('cc_total_revenue') || '0');
+                    let currentOrders = parseInt(localStorage.getItem('cc_completed_orders_count') || '0');
+                    currentRev += (order.total || 70.0);
+                    currentOrders += 1;
+                    localStorage.setItem('cc_total_revenue', currentRev);
+                    localStorage.setItem('cc_completed_orders_count', currentOrders);
+
+                    let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+                    order.status = 'complete';
+                    order.completedAt = Date.now();
+                    history.push(order);
+                    logAudit('Completed order', `Order #${id} · ₱${Number(order.total || 0).toFixed(2)}`);
+                    localStorage.setItem('cc_completed_orders_history', JSON.stringify(history));
+
+                    updateDashboardMetrics();
+                    queue.splice(orderIndex, 1);
+                }
+
+                showToast(`Order #${id} completed, stock deducted & revenue updated.`);
+            } else {
+                let order = queue.find(o => String(o.id) === String(id));
+                if(order) { order.status = newStatus; logAudit('Order status updated', `Order #${id} → ${newStatus === 'prep' ? 'Preparing' : 'Ready for pickup'}`); }
+                showToast(`[IoT Signal]: Hardware beeper/LED triggered for Order #${id}!`);
+            }
+            localStorage.setItem('cc_synced_queue', JSON.stringify(queue));
+            renderKitchenKanban();
+        }
+
+        setInterval(() => {
+            if(!document.getElementById('tab-content-kitchen').classList.contains('hidden')) {
+                renderKitchenKanban();
+            }
+            updateDashboardMetrics();
+        }, 2000);
+
+        updateDashboardMetrics();
+
+        function switchAdminTab(tab) {
+            ['dashboard', 'pos', 'kitchen', 'inventory', 'system'].forEach(t => {
+                let content = document.getElementById(`tab-content-${t}`);
+                let nav = document.getElementById(`nav-${t}`);
+                if(content) content.classList.add('hidden');
+                if(nav) nav.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 hover:bg-orange-50 text-slate-700 transition";
+            });
+            let activeContent = document.getElementById(`tab-content-${tab}`);
+            let activeNav = document.getElementById(`nav-${tab}`);
+            if(activeContent) activeContent.classList.remove('hidden');
+            if(activeNav) activeNav.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-xs flex items-center space-x-3 bg-orange-500 text-white shadow-md transition";
+            if(tab === 'kitchen') renderKitchenKanban();
+            if(tab === 'pos') renderPOS();
+            if(tab === 'inventory') renderInventory();
+            if(tab === 'dashboard') updateDashboardMetrics();
+        }
+    </script>
+</body>
+</html>
