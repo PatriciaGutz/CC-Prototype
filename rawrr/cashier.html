@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Cashier Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-body" style="justify-content: flex-start; align-items: stretch;">
+
+    <header id="portal-header" class="brand-header flex flex-wrap gap-2 justify-between items-center shadow-lg"></header>
+
+    <div class="admin-shell flex flex-grow max-w-7xl mx-auto w-full p-4 gap-4">
+        <aside id="portal-side" class="admin-side w-64 bg-white rounded-2xl shadow-xl p-4 flex flex-col shrink-0 self-start"></aside>
+        <main class="admin-main flex-grow min-w-0 space-y-4">
+<!-- POS / NEW WALK-IN ORDER -->
+            <div id="tab-content-pos" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl">
+                    <h2 class="font-bold text-base">POS / New Walk-In Order</h2>
+                    <span class="text-[10px] text-amber-200">Tap a dish to add it. Placed orders go straight to the kitchen queue.</span>
+                </div>
+                <div class="pos-layout">
+                    <div class="panel space-y-3">
+                        <div id="pos-cats" class="flex gap-2 overflow-x-auto pb-1"></div>
+                        <div id="pos-grid" class="space-y-4"></div>
+                    </div>
+                    <div class="panel pos-cart space-y-3">
+                        <h3 class="panel-title"><i class="fa-solid fa-receipt text-orange-600 mr-1"></i> Current Order</h3>
+                        <div id="pos-cart-list" class="space-y-2 flex-grow overflow-y-auto max-h-72"></div>
+                        <input type="text" id="pos-customer" placeholder="Customer name (optional)" class="w-full bg-slate-50 border rounded-xl p-2.5 text-xs outline-none focus:border-orange-500">
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="seg"><input type="radio" name="pos-type" value="Dine-in" checked><span>Dine-in</span></label>
+                            <label class="seg"><input type="radio" name="pos-type" value="Take-out"><span>Take-out</span></label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="seg"><input type="radio" name="pos-pay" value="Cash on Pickup" checked><span>Cash</span></label>
+                            <label class="seg"><input type="radio" name="pos-pay" value="GCash Paid"><span>GCash</span></label>
+                        </div>
+                        <p id="pos-eta" class="text-[11px] font-bold text-blue-600 text-center"></p>
+                        <div class="flex justify-between font-extrabold text-sm border-t pt-2"><span>Total</span><span id="pos-total">₱0.00</span></div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="clearPosCart()" class="bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-xs">Clear</button>
+                            <button onclick="placePosOrder()" class="col-span-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow">Place Order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+<!-- 2. KITCHEN DISPLAY & KANBAN WITH SEARCH & FILTER -->
+            <div id="tab-content-queue" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">Queue Status & KDS Board</h2>
+                        <span class="text-[10px] text-amber-200">Read-only live view: Walk-In POS and synced Web pre-orders</span>
+                    </div>
+                    <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                </div>
+
+                <!-- Quick Filter & Search Bar -->
+                <div class="bg-white p-3 rounded-xl shadow border flex gap-3 text-xs">
+                    <input type="text" id="kitchen-search" oninput="renderKitchenKanban()" placeholder="Search by Queue # or Customer Name..." class="flex-grow bg-slate-50 border rounded-xl p-2 outline-none focus:border-orange-500">
+                    <select id="kitchen-status-filter" onchange="renderKitchenKanban()" class="bg-slate-50 border rounded-xl p-2 text-slate-700">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="prep">Preparing</option>
+                        <option value="ready">Ready for Pickup</option>
+                    </select>
+                </div>
+
+                <div id="iot-alerts" class="panel space-y-2 !p-3"></div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-amber-100/90 p-3 rounded-2xl border border-orange-300 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-orange-900">
+                            <span>PENDING</span>
+                            <span id="count-pending" class="bg-orange-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-pending" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-blue-50/90 p-3 rounded-2xl border border-blue-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-blue-900">
+                            <span>PREPARING</span>
+                            <span id="count-prep" class="bg-blue-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-prep" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-emerald-900">
+                            <span>FOR PICKUP</span>
+                            <span id="count-ready" class="bg-emerald-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-ready" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div id="tab-content-availability" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl flex justify-between items-center gap-3 flex-wrap"><div><h2 class="font-bold text-base">Live Item Availability & ETA</h2><span class="text-[10px] text-amber-200">What is in stock right now and how long it takes (ML prep-time estimate)</span></div><div class="bg-white/20 rounded-xl px-3 py-1.5 text-[11px] font-bold">Queue: <span id="avail-queue">0</span> active · ETA ~<span id="avail-eta">3</span> min</div></div>
+                <div id="availability-grid" class="grid grid-cols-2 gap-3"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app-ui.js"></script>
+    <script src="portal.js"></script>
+    <script>
+        Portal.onTab = { pos: renderPOS, queue: renderKitchenKanban, availability: renderAvailability };
+        Portal.init('cashier', [
+            { id: 'pos', label: 'POS / New Order', icon: 'fa-cash-register', group: 'Orders' },
+            { id: 'queue', label: 'Queue & KDS Board', icon: 'fa-table-columns', group: 'Orders', live: true },
+            { id: 'availability', label: 'Menu Availability', icon: 'fa-utensils', group: 'Menu', live: true }
+        ], 'pos');
+    </script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Kitchen Personnel Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-body" style="justify-content: flex-start; align-items: stretch;">
+
+    <header id="portal-header" class="brand-header flex flex-wrap gap-2 justify-between items-center shadow-lg"></header>
+
+    <div class="admin-shell flex flex-grow max-w-7xl mx-auto w-full p-4 gap-4">
+        <aside id="portal-side" class="admin-side w-64 bg-white rounded-2xl shadow-xl p-4 flex flex-col shrink-0 self-start"></aside>
+        <main class="admin-main flex-grow min-w-0 space-y-4">
+<!-- 2. KITCHEN DISPLAY & KANBAN WITH SEARCH & FILTER -->
+            <div id="tab-content-kds" class="space-y-4 hidden">
+                <div class="brand-header rounded-2xl flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-base">Kitchen Display & Live Queue</h2>
+                        <span class="text-[10px] text-amber-200">Accept orders, mark them Ready, and complete pickups. Walk-In POS and Web pre-orders are synced.</span>
+                    </div>
+                    <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                </div>
+
+                <!-- Quick Filter & Search Bar -->
+                <div class="bg-white p-3 rounded-xl shadow border flex gap-3 text-xs">
+                    <input type="text" id="kitchen-search" oninput="renderKitchenKanban()" placeholder="Search by Queue # or Customer Name..." class="flex-grow bg-slate-50 border rounded-xl p-2 outline-none focus:border-orange-500">
+                    <select id="kitchen-status-filter" onchange="renderKitchenKanban()" class="bg-slate-50 border rounded-xl p-2 text-slate-700">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="prep">Preparing</option>
+                        <option value="ready">Ready for Pickup</option>
+                    </select>
+                </div>
+
+                <div id="iot-alerts" class="panel space-y-2 !p-3"></div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-amber-100/90 p-3 rounded-2xl border border-orange-300 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-orange-900">
+                            <span>PENDING</span>
+                            <span id="count-pending" class="bg-orange-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-pending" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-blue-50/90 p-3 rounded-2xl border border-blue-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-blue-900">
+                            <span>PREPARING</span>
+                            <span id="count-prep" class="bg-blue-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-prep" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+
+                    <div class="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-200 h-[380px] flex flex-col shadow-inner">
+                        <div class="flex justify-between items-center mb-2 font-bold text-xs text-emerald-900">
+                            <span>FOR PICKUP</span>
+                            <span id="count-ready" class="bg-emerald-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                        </div>
+                        <div id="kanban-ready" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app-ui.js"></script>
+    <script src="portal.js"></script>
+    <script>
+        Portal.onTab = { kds: renderKitchenKanban };
+        Portal.init('kitchen', [
+            { id: 'kds', label: 'Kitchen Display', icon: 'fa-fire-burner', group: 'Orders', live: true }
+        ], 'kds');
+    </script>
+</body>
+</html>
