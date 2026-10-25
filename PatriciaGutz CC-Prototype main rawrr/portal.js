@@ -1,5 +1,5 @@
-//if (sessionStorage.getItem('logged_employee_role') !== roleKey) { window.location.replace('admin_login.html'); return; }
 (function () {
+    //if (sessionStorage.getItem('logged_employee_role') !== roleKey) { window.location.replace('admin_login.html'); return; }
     const STAFF_KEY = 'cc_staff_members';
     const CONFIG_KEY = 'cc_portal_config';
     const INVENTORY_KEY = 'cc_synced_inventory';
@@ -132,10 +132,23 @@
                 <div><strong class="block text-sm">Campus Chicken SmartStall</strong><span class="text-[10px] text-amber-100">${esc(role.label)} Workspace</span></div>
             </div>
             <div class="flex items-center gap-3 ml-auto">
+                <span id="kds-clock" class="bg-white/15 px-3 py-1.5 rounded-xl text-[10px] font-bold font-mono text-amber-100 hidden sm:inline-block">--</span>
                 <span class="text-right hidden sm:block"><strong class="block text-xs">${esc(staff.name)}</strong><span class="text-[10px] text-amber-100">${esc(staff.id)}</span></span>
                 <button type="button" onclick="Portal.signOut()" class="bg-white/15 hover:bg-white/25 px-3 py-2 rounded-lg text-xs font-bold"><i class="fa-solid fa-right-from-bracket mr-1"></i> Sign out</button>
             </div>`;
     }
+
+    function tickKdsClock() {
+        const el = document.getElementById('kds-clock');
+        if (el) {
+            el.textContent = new Date().toLocaleString('en-PH', {
+                weekday: 'short', month: 'short', day: 'numeric',
+                hour: 'numeric', minute: '2-digit', second: '2-digit'
+            });
+        }
+    }
+    setInterval(tickKdsClock, 1000);
+    setTimeout(tickKdsClock, 50);
 
     function renderWorkspaceNavigation(roleKey, tabs) {
         const side = document.getElementById('portal-side');
@@ -989,7 +1002,8 @@
         ['setOwnerForecastPeriod', setOwnerForecastPeriod], ['openOwnerMenuEditor', openOwnerMenuEditor],
         ['closeOwnerMenuEditor', closeOwnerMenuEditor], ['previewOwnerMenuPhoto', previewOwnerMenuPhoto],
         ['saveOwnerMenuItem', saveOwnerMenuItem], ['deleteOwnerMenuItem', deleteOwnerMenuItem],
-        ['toggleOwnerMenuItemAvailability', toggleOwnerMenuItemAvailability]
+        ['toggleOwnerMenuItemAvailability', toggleOwnerMenuItemAvailability],
+        ['renderOwnerForecast', renderOwnerForecast]
     ].forEach(([name, value]) => expose(name, value));
 
     window.addEventListener('storage', event => {

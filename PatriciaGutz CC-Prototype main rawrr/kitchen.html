@@ -18,12 +18,16 @@
 
         <!-- 1. KITCHEN DISPLAY & KANBAN -->
         <div id="tab-content-kds" class="space-y-4 hidden">
+
             <div class="brand-header rounded-2xl flex justify-between items-center">
                 <div>
                     <h2 class="font-bold text-base">Kitchen Display & Live Queue</h2>
                     <span class="text-[10px] text-amber-200">Accept orders, mark them Ready, and complete pickups.</span>
                 </div>
-                <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <span id="hdr-counts" class="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold">Pending 0 · Preparing 0 · Ready 0</span>
+                    <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                </div>
             </div>
 
             <!-- Quick Filter & Search Bar -->
@@ -93,7 +97,7 @@
                         <tbody id="inventory-table-body" class="divide-y divide-orange-100"></tbody>
                     </table>
                 </div>
-                <p class="text-[10px] text-slate-400 mt-3"><i class="fa-solid fa-robot"></i> Suggested restock point = forecast daily demand (exponential smoothing over completed-order history) plus safety stock[cite: 9]. Uses a default of 10 until sales data exists[cite: 9].</p>
+                <p class="text-[10px] text-slate-400 mt-3"><i class="fa-solid fa-robot"></i> Suggested restock point = forecast daily demand (exponential smoothing over completed-order history) plus safety stock. Uses a default of 10 until sales data exists.</p>
             </div>
         </div>
 
@@ -167,7 +171,8 @@
             let displayName = order.customerName || "Customer";
             let sourceTag = order.source === 'Walk-In' ? '<span class="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Walk-In</span>' : '<span class="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Web</span>';
 
-            let eta = window.estimateEtaMinutes ? window.estimateEtaMinutes(order) : 3;
+            let etaInfo = window.etaBreakdown ? window.etaBreakdown(order) : { minutes: 3, complexity: 0, ahead: 0, speed: 1 };
+            let eta = etaInfo.minutes;
 
             let matchSearch = String(order.id).includes(searchQuery) || displayName.toLowerCase().includes(searchQuery) || String(order.items).toLowerCase().includes(searchQuery);
             if(!matchSearch) return;
@@ -175,17 +180,6 @@
             let card = document.createElement('div');
             card.className = "bg-white p-3 rounded-xl shadow-sm text-xs space-y-2 border border-orange-100 transition hover:shadow-md";
 
-            if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
-                pCount++;
-                card.innerHTML = `
-                        <div class="flex justify-between items-center pb-1 border-b border-orange-100">
-                            <strong class="text-orange-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
-                        </div>
-                        ${orderItemsHtml(order)}
-                        <button onclick="updateOrderStatus('${order.id}', 'prep')" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Accept / Start Prep</button>
-                    `;
-                pDiv.appendChild(card);
-            }
             if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
                 pCount++;
                 card.innerHTML = `
@@ -207,7 +201,8 @@
                             <strong class="text-blue-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
                         </div>
                         ${orderItemsHtml(order)}
-                        <p class="text-[10px] text-blue-600 font-bold">🤖 AI ETA: ~${eta} min</p>
+                        <p class="text-[10px] text-blue-600 font-bold">⏱ <span class="prep-timer font-mono" data-start="${order.startedAt || ''}" data-eta="${eta}">--:--</span> elapsed · 🤖 AI ETA ~${eta} min</p>
+                        <p class="text-[9px] text-slate-400">complexity ${etaInfo.complexity} pts · ${etaInfo.ahead} ahead · speed ×${etaInfo.speed}</p>
                         <button onclick="updateOrderStatus('${order.id}', 'ready')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Mark as Ready</button>
                     `;
                 prDiv.appendChild(card);
@@ -227,6 +222,8 @@
         if(document.getElementById('count-pending')) document.getElementById('count-pending').innerText = pCount;
         if(document.getElementById('count-prep')) document.getElementById('count-prep').innerText = prCount;
         if(document.getElementById('count-ready')) document.getElementById('count-ready').innerText = rCount;
+        updateKdsHeaderCounts();
+        if (window.tickPrepTimers) tickPrepTimers();
     }
     function updateOrderStatus(id, newStatus) {
         let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
@@ -238,6 +235,9 @@
             newStatus = 'completed';
         }
         order.status = newStatus;
+        if (newStatus === 'prep' && !order.startedAt) order.startedAt = Date.now();
+        if (newStatus === 'ready') order.readyAt = Date.now();
+        if (window.logSystemAudit) logSystemAudit('KDS', `Order #${id} → ${newStatus}`);
 
         if (newStatus === 'completed') {
             queue.splice(index, 1);
@@ -272,7 +272,7 @@
         return { rop: Math.max(3, Math.ceil(ewma + 1.65 * sd)), learning: false };
     }
 
-    // Inventory Table with Edit and Delete Action Buttons (Ported from Non-RBAC admin.html)[cite: 9]
+    // Inventory Table with Edit and Delete Action Buttons
     function renderKitchenInventory() {
         let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || localStorage.getItem('cc_menu') || '[]');
         let tbody = document.getElementById('inventory-table-body');
@@ -296,8 +296,8 @@
                         <div class="font-bold text-slate-900">${f.rop} <span class="text-[9px] font-semibold text-slate-400">${f.learning ? 'default' : 'forecast'}</span></div>
                         ${item.active !== false ? (item.stock <= f.rop ? '<span class="badge-red">Restock now</span>' : '<span class="badge-green">OK</span>') : '<span class="text-[10px] text-slate-400">Inactive</span>'}
                     </td>
-                    <td class="p-2.5"><span class="font-bold ${item.stock > 0 ? 'text-emerald-700' : 'text-red-600'}">${item.stock > 0 ? 'In Stock' : 'Out of Stock'}</span></td>
-                    <td class="p-2.5 text-right space-x-1">
+                    <td class="p-2.5 whitespace-nowrap">${stockToggle(item, index)}</td>
+                    <td class="p-2.5 text-right whitespace-nowrap space-x-1">
                         <button onclick="openKitchenItemModal(${index})" class="bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold px-2.5 py-1 rounded-lg text-[11px]"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
                         <button onclick="deleteKitchenItem(${index})" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1 rounded-lg text-[11px]"><i class="fa-solid fa-trash-can mr-1"></i>Delete</button>
                     </td>
@@ -306,7 +306,7 @@
         });
     }
 
-    // Modal Management Functions (Ported from Non-RBAC admin.html)[cite: 9]
+    // Modal Management Functions
     function openKitchenItemModal(idx = null) {
         let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || localStorage.getItem('cc_menu') || '[]');
         editingIndex = idx;
@@ -340,6 +340,11 @@
             preview.classList.add('hidden');
         }
 
+        const priceEl = document.getElementById('kitchen-item-price');
+        priceEl.disabled = idx !== null;                       // locked when editing
+        priceEl.classList.toggle('opacity-60', idx !== null);
+        priceEl.classList.toggle('cursor-not-allowed', idx !== null);
+        priceEl.parentElement.childNodes[0].textContent = idx !== null ? 'Price (₱) — set by Owner' : 'Price (₱)';
         modal.classList.remove('hidden');
     }
 
@@ -365,7 +370,7 @@
         }
 
         const before = editingIndex !== null ? inventoryData[editingIndex] : null;
-        const newItem = { ...(before || {}), name, category, price, stock, active, photo: activePhotoData || '🍲' };
+        const newItem = { ...(before || {}), name, category, price: before ? Number(before.price): price, stock, active, photo: activePhotoData || '🍲' };
 
         if (editingIndex !== null && inventoryData[editingIndex]) {
             inventoryData[editingIndex] = newItem;
@@ -411,6 +416,38 @@
             reader.readAsDataURL(file);
         }
     });
+
+    function stockToggle(item, index) {
+        const on = item.active !== false && Number(item.stock) > 0;
+        return `<button onclick="toggleKitchenStock(${index})" title="Click to mark ${on ? 'Out of Stock' : 'In Stock'}"
+        class="whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold border transition ${on ? 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300'}">
+        ${on ? '● In Stock' : '○ Out of Stock'}</button>`;
+    }
+
+    function toggleKitchenStock(idx) {
+        const inv = JSON.parse(localStorage.getItem('cc_synced_inventory') || '[]');
+        const item = inv[idx];
+        if (!item) return;
+        if (Number(item.stock) <= 0) { appToast(`"${item.name}" has 0 stock. Edit the dish and add stock first.`); return; }
+        item.active = item.active === false;               // flip In Stock <-> Out of Stock
+        localStorage.setItem('cc_synced_inventory', JSON.stringify(inv));
+        localStorage.setItem('cc_menu', JSON.stringify(inv));
+        renderKitchenInventory();
+        logSystemAudit('INVENTORY', `Marked "${item.name}" as ${item.active ? 'In Stock' : 'Out of Stock'}`);
+        appToast(`${item.name}: ${item.active ? 'In Stock' : 'Out of Stock'}`);
+    }
+
+    function tickKdsClock() {
+        const el = document.getElementById('kds-clock');
+        if (el) el.textContent = new Date().toLocaleString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    }
+    function updateKdsHeaderCounts() {
+        const q = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        const n = s => q.filter(o => o.status === s).length;
+        const el = document.getElementById('hdr-counts');
+        if (el) el.textContent = `Pending ${n('pending')} · Preparing ${n('prep')} · Ready ${n('ready')}`;
+    }
+    setInterval(tickKdsClock, 1000); tickKdsClock();
 
     Portal.onTab = { kds: renderKitchenKanban, inventory: renderKitchenInventory };
     Portal.init('kitchen', [

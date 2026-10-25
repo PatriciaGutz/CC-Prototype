@@ -54,9 +54,12 @@
             <div class="brand-header rounded-2xl flex justify-between items-center">
                 <div>
                     <h2 class="font-bold text-base">Queue Status & KDS Board</h2>
-                    <span class="text-[10px] text-amber-200">Read-only live view: Walk-In POS and synced Web pre-orders</span>
+                    <span class="text-[10px] text-amber-200"> Walk-In POS and synced Web pre-orders</span>
                 </div>
-                <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <span id="hdr-counts" class="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold">Pending 0 · Preparing 0 · Ready 0</span>
+                    <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                </div>
             </div>
 
             <!-- Quick Filter & Search Bar -->
@@ -226,7 +229,7 @@
         if(window.appToast) window.appToast(`🔔 IoT Beeper Alert: Walk-In Order #${id} (${cust}) placed successfully!`);
     }
 
-    // Colorful Kanban Rendering (Ported from non-RBAC admin.html)[cite: 9]
+    // Colorful Kanban Rendering (Ported from non-RBAC admin.html)
     function orderItemsHtml(order) {
         let lines = (order.rawItems && order.rawItems.length ? order.rawItems : [{ name: order.items, qty: '' }]).map(r =>
             `<div class="flex items-center gap-2"><span>${r.qty ? r.qty + 'x ' : ''}${esc(r.name)}</span></div>`).join('');
@@ -254,23 +257,15 @@
             let displayName = order.customerName || "Customer";
             let sourceTag = order.source === 'Walk-In' ? '<span class="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Walk-In</span>' : '<span class="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Web</span>';
 
+            let etaInfo = window.etaBreakdown ? window.etaBreakdown(order) : { minutes: 3, complexity: 0, ahead: 0, speed: 1 };
+            let eta = etaInfo.minutes;
+
             let matchSearch = String(order.id).includes(searchQuery) || displayName.toLowerCase().includes(searchQuery) || String(order.items).toLowerCase().includes(searchQuery);
             if(!matchSearch) return;
 
             let card = document.createElement('div');
             card.className = "bg-white p-3 rounded-xl shadow-sm text-xs space-y-2 border border-orange-100 transition hover:shadow-md";
 
-            if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
-                pCount++;
-                card.innerHTML = `
-                        <div class="flex justify-between items-center pb-1 border-b border-orange-100">
-                            <strong class="text-orange-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
-                        </div>
-                        ${orderItemsHtml(order)}
-                        <button onclick="updateOrderStatus('${order.id}', 'prep')" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Accept / Start Prep</button>
-                    `;
-                pDiv.appendChild(card);
-            }
             if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
                 pCount++;
                 card.innerHTML = `
@@ -292,7 +287,8 @@
                             <strong class="text-blue-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
                         </div>
                         ${orderItemsHtml(order)}
-                        <p class="text-[10px] text-blue-600 font-bold">🤖 AI ETA: ~3 mins</p>
+                        <p class="text-[10px] text-blue-600 font-bold">⏱ <span class="prep-timer font-mono" data-start="${order.startedAt || ''}" data-eta="${eta}">--:--</span> elapsed · 🤖 AI ETA ~${eta} min</p>
+                        <p class="text-[9px] text-slate-400">complexity ${etaInfo.complexity} pts · ${etaInfo.ahead} ahead · speed ×${etaInfo.speed}</p>
                         <button onclick="updateOrderStatus('${order.id}', 'ready')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Mark as Ready</button>
                     `;
                 prDiv.appendChild(card);
@@ -324,6 +320,9 @@
             newStatus = 'completed';
         }
         order.status = newStatus;
+        if (newStatus === 'prep' && !order.startedAt) order.startedAt = Date.now();
+        if (newStatus === 'ready') order.readyAt = Date.now();
+        if (window.logSystemAudit) logSystemAudit('KDS', `Order #${id} → ${newStatus}`);
 
         if (newStatus === 'completed') {
             queue.splice(index, 1);

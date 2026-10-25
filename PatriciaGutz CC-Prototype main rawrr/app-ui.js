@@ -107,13 +107,58 @@
         window.dispatchEvent(new Event('cc-inventory-updated'));
     };
 
-    //Gives a "dynamic" AI-ETA time
+/*    //Gives a "dynamic" AI-ETA time
     window.estimateEtaMinutes = function (order) {
         const q = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
         const ahead = q.filter(o => ['pending', 'prep'].includes(o.status) && Number(o.createdAt) <= Number(order.createdAt)).length;
         const items = (order.rawItems || []).reduce((s, r) => s + Number(r.qty), 0);
         return Math.max(3, Math.round(2 + items * 0.5 + ahead * 1.5));
+    };*/
+
+    // ===== DSS prep-time estimator: order volume + item complexity + historical prep speed =====
+    const DEFAULT_COMPLEXITY = { Chicken: 4, Meals: 3, Snacks: 2, Drinks: 1 };
+    const readJSON = k => JSON.parse(localStorage.getItem(k) || '[]');
+
+    window.defaultComplexity = category => DEFAULT_COMPLEXITY[category] || 2;
+    window.itemComplexity = function (name) {                       // 1 = pour & serve ... 5 = multi-step cook
+        const it = readJSON('cc_synced_inventory').find(i => i.name === name);
+        return it ? (Number(it.complexity) || window.defaultComplexity(it.category)) : 2;
     };
+    window.orderComplexity = o =>
+        (o.rawItems || []).reduce((s, r) => s + window.itemComplexity(r.name) * Number(r.qty || 1), 0);
+
+    window.prepSpeedFactor = function () {                          // 1 = kitchen matches the model
+        const done = readJSON('cc_completed_orders_history')
+            .filter(o => o.startedAt && o.readyAt && o.readyAt - o.startedAt >= 30000)   // ignore sub-30s demo clicks
+            .slice(-15);
+        if (done.length < 3) return 1;
+        const ratio = done.reduce((s, o) =>
+            s + ((o.readyAt - o.startedAt) / 60000) / (1 + 0.6 * Math.max(1, window.orderComplexity(o))), 0) / done.length;
+        return Math.min(1.6, Math.max(0.6, ratio));
+    };
+
+    window.etaBreakdown = function (order) {
+        const ahead = readJSON('cc_synced_queue').filter(o =>
+            ['pending', 'prep'].includes(o.status) && String(o.id) !== String(order.id) &&
+            Number(o.createdAt) < Number(order.createdAt)).length;
+        const complexity = window.orderComplexity(order);
+        const speed = window.prepSpeedFactor();
+        const minutes = Math.max(3, Math.round((1 + 0.6 * complexity + 1.2 * ahead) * speed));
+        return { minutes, complexity, ahead, speed: Math.round(speed * 100) / 100 };
+    };
+    window.estimateEtaMinutes = order => window.etaBreakdown(order).minutes;
+
+// Running mm:ss for every <span class="prep-timer" data-start data-eta>; turns red when overdue
+    window.tickPrepTimers = function () {
+        document.querySelectorAll('.prep-timer').forEach(el => {
+            const start = Number(el.dataset.start);
+            if (!start) { el.textContent = '--:--'; return; }
+            const s = Math.max(0, Math.floor((Date.now() - start) / 1000));
+            el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+            el.classList.toggle('text-red-600', s / 60 > Number(el.dataset.eta));
+        });
+    };
+    setInterval(window.tickPrepTimers, 1000);
 
     window.cancelOrder = function (orderId) {
         let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
