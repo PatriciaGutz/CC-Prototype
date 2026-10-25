@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Kitchen Personnel Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-body" style="justify-content: flex-start; align-items: stretch;">
+
+<header id="portal-header" class="brand-header flex flex-wrap gap-2 justify-between items-center shadow-lg"></header>
+
+<div class="admin-shell flex flex-grow max-w-7xl mx-auto w-full p-4 gap-4">
+    <aside id="portal-side" class="admin-side w-64 bg-white rounded-2xl shadow-xl p-4 flex flex-col shrink-0 self-start"></aside>
+    <main class="admin-main flex-grow min-w-0 space-y-4">
+
+        <!-- 1. KITCHEN DISPLAY & KANBAN -->
+        <div id="tab-content-kds" class="space-y-4 hidden">
+            <div class="brand-header rounded-2xl flex justify-between items-center">
+                <div>
+                    <h2 class="font-bold text-base">Kitchen Display & Live Queue</h2>
+                    <span class="text-[10px] text-amber-200">Accept orders, mark them Ready, and complete pickups.</span>
+                </div>
+                <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+            </div>
+
+            <!-- Quick Filter & Search Bar -->
+            <div class="bg-white p-3 rounded-xl shadow border flex gap-3 text-xs">
+                <input type="text" id="kitchen-search" oninput="renderKitchenKanban()" placeholder="Search by Queue # or Customer Name..." class="flex-grow bg-slate-50 border rounded-xl p-2 outline-none focus:border-orange-500">
+                <select id="kitchen-status-filter" onchange="renderKitchenKanban()" class="bg-slate-50 border rounded-xl p-2 text-slate-700">
+                    <option value="all">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="prep">Preparing</option>
+                    <option value="ready">Ready for Pickup</option>
+                </select>
+            </div>
+
+            <div id="iot-alerts" class="panel space-y-2 !p-3"></div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-amber-100/90 p-3 rounded-2xl border border-orange-300 h-[380px] flex flex-col shadow-inner">
+                    <div class="flex justify-between items-center mb-2 font-bold text-xs text-orange-900">
+                        <span>PENDING</span>
+                        <span id="count-pending" class="bg-orange-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    </div>
+                    <div id="kanban-pending" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                </div>
+
+                <div class="bg-blue-50/90 p-3 rounded-2xl border border-blue-200 h-[380px] flex flex-col shadow-inner">
+                    <div class="flex justify-between items-center mb-2 font-bold text-xs text-blue-900">
+                        <span>PREPARING</span>
+                        <span id="count-prep" class="bg-blue-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    </div>
+                    <div id="kanban-prep" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                </div>
+
+                <div class="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-200 h-[380px] flex flex-col shadow-inner">
+                    <div class="flex justify-between items-center mb-2 font-bold text-xs text-emerald-900">
+                        <span>FOR PICKUP</span>
+                        <span id="count-ready" class="bg-emerald-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    </div>
+                    <div id="kanban-ready" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. INVENTORY MANAGEMENT TAB -->
+        <div id="tab-content-inventory" class="space-y-4 hidden">
+            <div class="brand-header rounded-2xl flex justify-between items-center flex-wrap gap-2">
+                <div>
+                    <h2 class="font-bold text-base">Inventory Management</h2>
+                    <span class="text-[10px] text-amber-200">Monitor ingredient levels, pricing, and update menu items</span>
+                </div>
+                <button type="button" onclick="openKitchenItemModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-3.5 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-plus mr-1"></i> Add Dish Item</button>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                        <tr class="bg-orange-600 text-white rounded-lg">
+                            <th class="p-2.5 rounded-l-xl">Dish Photo</th>
+                            <th class="p-2.5">Item Name</th>
+                            <th class="p-2.5">Category</th>
+                            <th class="p-2.5">Price</th>
+                            <th class="p-2.5">Stock</th>
+                            <th class="p-2.5">Restock Point <span class="bg-amber-300 text-slate-900 rounded px-1 text-[9px]">AI</span></th>
+                            <th class="p-2.5">Status</th>
+                            <th class="p-2.5 rounded-r-xl text-right">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-orange-100"></tbody>
+                    </table>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-3"><i class="fa-solid fa-robot"></i> Suggested restock point = forecast daily demand (exponential smoothing over completed-order history) plus safety stock[cite: 9]. Uses a default of 10 until sales data exists[cite: 9].</p>
+            </div>
+        </div>
+
+        <!-- Dish Item Modal (Ported from Non-RBAC admin.html) -->
+        <div id="kitchen-item-modal" class="app-dialog-overlay hidden">
+            <section class="app-dialog max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="kitchen-modal-title">
+                <h2 id="kitchen-modal-title" class="text-sm font-bold text-slate-800 mb-3 pb-2 border-b">Edit Dish Item</h2>
+                <div class="space-y-3 text-xs">
+                    <label class="block font-bold text-slate-700">Item name<input id="kitchen-item-name" type="text" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                    <label class="block font-bold text-slate-700">Category<input id="kitchen-item-category" type="text" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block font-bold text-slate-700">Price (₱)<input id="kitchen-item-price" type="number" min="0" step="0.01" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                        <label class="block font-bold text-slate-700">Stock Count<input id="kitchen-item-stock" type="number" min="0" step="1" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                    </div>
+                    <label class="flex items-center gap-2 font-bold text-slate-700"><input id="kitchen-item-active" type="checkbox" class="accent-orange-500 w-4 h-4"> Available for sale</label>
+                    <label class="block font-bold text-slate-700">Photo<input id="kitchen-item-photo-file" type="file" accept="image/*" class="mt-1 block w-full text-xs"></label>
+                    <img id="kitchen-item-photo-preview" alt="Preview" class="hidden w-20 h-20 object-cover rounded-xl border">
+                </div>
+                <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
+                    <button type="button" onclick="closeKitchenItemModal()" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs">Cancel</button>
+                    <button type="button" onclick="saveKitchenItem()" class="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow">Save Item</button>
+                </div>
+            </section>
+        </div>
+
+    </main>
+</div>
+
+<script src="app-ui.js"></script>
+<script src="portal.js"></script>
+<script>
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function isImg(p) { return !!p && (p.startsWith('data:image/') || p.startsWith('images/') || p.startsWith('http')); }
+
+    let seen = new Set(JSON.parse(localStorage.getItem('cc_synced_queue') || '[]').map(o => o.id));
+    setInterval(() => {
+        const q = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        q.filter(o => o.status === 'pending' && !seen.has(o.id))
+            .forEach(o => appToast(`🔔 IoT Beeper + LED triggered: new order #${o.id}`));
+        seen = new Set(q.map(o => o.id));
+    }, 1500);
+
+    let editingIndex = null;
+    let activePhotoData = '';
+
+    // Colorful Kanban Rendering
+    function orderItemsHtml(order) {
+        let lines = (order.rawItems && order.rawItems.length ? order.rawItems : [{ name: order.items, qty: '' }]).map(r =>
+            `<div class="flex items-center gap-2"><span>${r.qty ? r.qty + 'x ' : ''}${esc(r.name)}</span></div>`).join('');
+        return `<div class="text-slate-600 space-y-1">${lines}<div class="text-[10px] text-slate-400">${esc(order.type)} · ${esc(order.pay || '')}</div></div>`;
+    }
+
+    function renderKitchenKanban() {
+        let pDiv = document.getElementById('kanban-pending');
+        let prDiv = document.getElementById('kanban-prep');
+        let rDiv = document.getElementById('kanban-ready');
+        if(!pDiv || !prDiv || !rDiv) return;
+
+        pDiv.innerHTML = '';
+        prDiv.innerHTML = '';
+        rDiv.innerHTML = '';
+
+        let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        let searchQuery = (document.getElementById('kitchen-search')?.value || '').toLowerCase();
+        let statusFilter = document.getElementById('kitchen-status-filter')?.value || 'all';
+
+        let pCount = 0, prCount = 0, rCount = 0;
+
+        queue.sort((x, y) => Number(x.id) - Number(y.id));
+        queue.forEach(order => {
+            let displayName = order.customerName || "Customer";
+            let sourceTag = order.source === 'Walk-In' ? '<span class="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Walk-In</span>' : '<span class="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Web</span>';
+
+            let eta = window.estimateEtaMinutes ? window.estimateEtaMinutes(order) : 3;
+
+            let matchSearch = String(order.id).includes(searchQuery) || displayName.toLowerCase().includes(searchQuery) || String(order.items).toLowerCase().includes(searchQuery);
+            if(!matchSearch) return;
+
+            let card = document.createElement('div');
+            card.className = "bg-white p-3 rounded-xl shadow-sm text-xs space-y-2 border border-orange-100 transition hover:shadow-md";
+
+            if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
+                pCount++;
+                card.innerHTML = `
+                        <div class="flex justify-between items-center pb-1 border-b border-orange-100">
+                            <strong class="text-orange-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
+                        </div>
+                        ${orderItemsHtml(order)}
+                        <button onclick="updateOrderStatus('${order.id}', 'prep')" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Accept / Start Prep</button>
+                    `;
+                pDiv.appendChild(card);
+            }
+            if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
+                pCount++;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center pb-1 border-b border-orange-100">
+                        <strong class="text-orange-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
+                    </div>
+                    ${orderItemsHtml(order)}
+                    <div class="space-y-1.5 pt-1">
+                        <button onclick="updateOrderStatus('${order.id}', 'prep')" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Accept / Start Prep</button>
+                        <button onclick="cancelOrder('${order.id}')" class="w-full bg-red-100 hover:bg-red-200 text-red-700 py-1.5 rounded-xl font-bold text-[11px] shadow transition">Cancel Order</button>
+                    </div>
+                `;
+                pDiv.appendChild(card);
+            }
+            else if(order.status === 'prep' && (statusFilter === 'all' || statusFilter === 'prep')) {
+                prCount++;
+                card.innerHTML = `
+                        <div class="flex justify-between items-center pb-1 border-b border-blue-100">
+                            <strong class="text-blue-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
+                        </div>
+                        ${orderItemsHtml(order)}
+                        <p class="text-[10px] text-blue-600 font-bold">🤖 AI ETA: ~${eta} min</p>
+                        <button onclick="updateOrderStatus('${order.id}', 'ready')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Mark as Ready</button>
+                    `;
+                prDiv.appendChild(card);
+            } else if(order.status === 'ready' && (statusFilter === 'all' || statusFilter === 'ready')) {
+                rCount++;
+                card.innerHTML = `
+                        <div class="flex justify-between items-center pb-1 border-b border-emerald-100">
+                            <strong class="text-emerald-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
+                        </div>
+                        ${orderItemsHtml(order)}
+                       <button onclick="updateOrderStatus('${order.id}', 'completed')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Complete Order ✔</button>
+                    `;
+                rDiv.appendChild(card);
+            }
+        });
+
+        if(document.getElementById('count-pending')) document.getElementById('count-pending').innerText = pCount;
+        if(document.getElementById('count-prep')) document.getElementById('count-prep').innerText = prCount;
+        if(document.getElementById('count-ready')) document.getElementById('count-ready').innerText = rCount;
+    }
+    function updateOrderStatus(id, newStatus) {
+        let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        let index = queue.findIndex(o => String(o.id) === String(id));
+        if (index < 0) return;
+
+        let order = queue[index];
+        if (newStatus === 'complete' || newStatus === 'completed') {
+            newStatus = 'completed';
+        }
+        order.status = newStatus;
+
+        if (newStatus === 'completed') {
+            queue.splice(index, 1);
+            let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+            order.completedAt = Date.now();
+            history.push(order);
+            localStorage.setItem('cc_completed_orders_history', JSON.stringify(history));
+
+            if (typeof window.applyStockDeduction === 'function') {
+                window.applyStockDeduction(order);
+            }
+        }
+
+        localStorage.setItem('cc_synced_queue', JSON.stringify(queue));
+        if (typeof renderKitchenKanban === 'function') renderKitchenKanban();
+        if (window.appToast) window.appToast(`Order #${id} updated to ${newStatus}!`);
+    }
+
+    function forecastRestock(item) {
+        let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+        let daily = {}, sold = 0;
+        history.forEach(o => {
+            let day = new Date(o.completedAt || o.createdAt || Date.now()).toDateString();
+            (o.rawItems || []).forEach(r => { if(r.name === item.name) { daily[day] = (daily[day] || 0) + r.qty; sold += r.qty; } });
+        });
+        if(sold === 0) return { rop: 10, learning: true };
+        let series = [];
+        for(let i = 13; i >= 0; i--) series.push(daily[new Date(Date.now() - i * 864e5).toDateString()] || 0);
+        let ewma = series.reduce((m, v) => 0.4 * v + 0.6 * m, series[0]);
+        let mean = series.reduce((s, v) => s + v, 0) / series.length;
+        let sd = Math.sqrt(series.reduce((s, v) => s + (v - mean) ** 2, 0) / series.length);
+        return { rop: Math.max(3, Math.ceil(ewma + 1.65 * sd)), learning: false };
+    }
+
+    // Inventory Table with Edit and Delete Action Buttons (Ported from Non-RBAC admin.html)[cite: 9]
+    function renderKitchenInventory() {
+        let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || localStorage.getItem('cc_menu') || '[]');
+        let tbody = document.getElementById('inventory-table-body');
+        if (!tbody) return;
+        if (inventoryData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400">No inventory items found.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = '';
+        inventoryData.forEach((item, index) => {
+            let tr = document.createElement('tr');
+            let f = forecastRestock(item);
+            tr.className = "hover:bg-orange-50/50";
+            tr.innerHTML = `
+                    <td class="p-2.5 text-2xl">${isImg(item.photo) ? `<img src="${esc(item.photo)}" alt="${esc(item.name)}" class="w-8 h-8 object-cover rounded-lg">` : (item.photo || '🍲')}</td>
+                    <td class="p-2.5 font-bold text-slate-800">${esc(item.name)}</td>
+                    <td class="p-2.5"><span class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-[10px] font-bold">${esc(item.category)}</span></td>
+                    <td class="p-2.5 font-semibold">₱${Number(item.price || 0).toFixed(2)}</td>
+                    <td class="p-2.5 font-bold ${item.stock > 0 ? 'text-slate-900' : 'text-red-600'}">${item.stock}</td>
+                    <td class="p-2.5">
+                        <div class="font-bold text-slate-900">${f.rop} <span class="text-[9px] font-semibold text-slate-400">${f.learning ? 'default' : 'forecast'}</span></div>
+                        ${item.active !== false ? (item.stock <= f.rop ? '<span class="badge-red">Restock now</span>' : '<span class="badge-green">OK</span>') : '<span class="text-[10px] text-slate-400">Inactive</span>'}
+                    </td>
+                    <td class="p-2.5"><span class="font-bold ${item.stock > 0 ? 'text-emerald-700' : 'text-red-600'}">${item.stock > 0 ? 'In Stock' : 'Out of Stock'}</span></td>
+                    <td class="p-2.5 text-right space-x-1">
+                        <button onclick="openKitchenItemModal(${index})" class="bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold px-2.5 py-1 rounded-lg text-[11px]"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
+                        <button onclick="deleteKitchenItem(${index})" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2.5 py-1 rounded-lg text-[11px]"><i class="fa-solid fa-trash-can mr-1"></i>Delete</button>
+                    </td>
+                `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Modal Management Functions (Ported from Non-RBAC admin.html)[cite: 9]
+    function openKitchenItemModal(idx = null) {
+        let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || localStorage.getItem('cc_menu') || '[]');
+        editingIndex = idx;
+        let modal = document.getElementById('kitchen-item-modal');
+        let title = document.getElementById('kitchen-modal-title');
+
+        if (idx !== null && inventoryData[idx]) {
+            let item = inventoryData[idx];
+            title.innerText = "Edit Dish Item";
+            document.getElementById('kitchen-item-name').value = item.name || '';
+            document.getElementById('kitchen-item-category').value = item.category || '';
+            document.getElementById('kitchen-item-price').value = item.price || 0;
+            document.getElementById('kitchen-item-stock').value = item.stock || 0;
+            document.getElementById('kitchen-item-active').checked = item.active !== false;
+            activePhotoData = item.photo || '🍲';
+        } else {
+            title.innerText = "Add Dish Item";
+            document.getElementById('kitchen-item-name').value = '';
+            document.getElementById('kitchen-item-category').value = 'Chicken';
+            document.getElementById('kitchen-item-price').value = 50;
+            document.getElementById('kitchen-item-stock').value = 20;
+            document.getElementById('kitchen-item-active').checked = true;
+            activePhotoData = '🍗';
+        }
+
+        let preview = document.getElementById('kitchen-item-photo-preview');
+        if (isImg(activePhotoData)) {
+            preview.src = activePhotoData;
+            preview.classList.remove('hidden');
+        } else {
+            preview.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeKitchenItemModal() {
+        document.getElementById('kitchen-item-modal').classList.add('hidden');
+        editingIndex = null;
+        activePhotoData = '';
+    }
+
+    function saveKitchenItem() {
+        let key = localStorage.getItem('cc_synced_inventory') ? 'cc_synced_inventory' : 'cc_menu';
+        let inventoryData = JSON.parse(localStorage.getItem(key) || '[]');
+
+        let name = document.getElementById('kitchen-item-name').value.trim();
+        let category = document.getElementById('kitchen-item-category').value.trim() || 'General';
+        let price = parseFloat(document.getElementById('kitchen-item-price').value) || 0;
+        let stock = parseInt(document.getElementById('kitchen-item-stock').value, 10) || 0;
+        let active = document.getElementById('kitchen-item-active').checked;
+
+        if (!name) {
+            if (window.appToast) window.appToast("Please enter an item name.");
+            return;
+        }
+
+        const before = editingIndex !== null ? inventoryData[editingIndex] : null;
+        const newItem = { ...(before || {}), name, category, price, stock, active, photo: activePhotoData || '🍲' };
+
+        if (editingIndex !== null && inventoryData[editingIndex]) {
+            inventoryData[editingIndex] = newItem;
+        } else {
+            inventoryData.push(newItem);
+        }
+
+        localStorage.setItem('cc_synced_inventory', JSON.stringify(inventoryData));
+        localStorage.setItem('cc_menu', JSON.stringify(inventoryData));
+
+        closeKitchenItemModal();
+        renderKitchenInventory();
+        if (window.appToast) window.appToast(`Saved inventory item: ${name}`);
+
+        const diff = before ? ['price','stock','active'].filter(k => before[k] !== newItem[k]).map(k => `${k} ${before[k]}→${newItem[k]}`).join(', ') : '';
+        logSystemAudit('INVENTORY', before ? `Edited "${name}"${diff ? ` (${diff})` : ''}` : `Added "${name}"`);
+
+    }
+
+    function deleteKitchenItem(idx) {
+        const inv = JSON.parse(localStorage.getItem('cc_synced_inventory') || '[]');
+        const item = inv[idx];
+        if (!item || !confirm(`Delete "${item.name}"?`)) return;
+        inv.splice(idx, 1);
+        localStorage.setItem('cc_synced_inventory', JSON.stringify(inv));
+        localStorage.setItem('cc_menu', JSON.stringify(inv));
+        renderKitchenInventory();
+        appToast(`Deleted item: ${item.name}`);
+        logSystemAudit('INVENTORY', `Deleted dish item: ${item.name}`);
+    }
+
+    // Photo file preview listener
+    document.getElementById('kitchen-item-photo-file')?.addEventListener('change', function(e) {
+        let file = e.target.files[0];
+        if (file) {
+            let reader = new FileReader();
+            reader.onload = function(evt) {
+                activePhotoData = evt.target.result;
+                let preview = document.getElementById('kitchen-item-photo-preview');
+                preview.src = activePhotoData;
+                preview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    Portal.onTab = { kds: renderKitchenKanban, inventory: renderKitchenInventory };
+    Portal.init('kitchen', [
+        { id: 'kds', label: 'Kitchen Display', icon: 'fa-fire-burner', group: 'Orders', live: true },
+        { id: 'inventory', label: 'Inventory Management', icon: 'fa-boxes-stacked', group: 'Stock' }
+    ], 'kds');
+</script>
+</body>
+</html>

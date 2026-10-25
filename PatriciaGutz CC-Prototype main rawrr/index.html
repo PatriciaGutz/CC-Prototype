@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Welcome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="mobile-frame flex flex-col justify-between" style="background: linear-gradient(180deg, #f97316 0%, #f8d226 100%);">
+        <div class="flex-grow flex flex-col items-center justify-center px-8 text-center">
+            <div class="w-40 h-40 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-amber-300 mb-5">
+                <img src="images/logo.png" alt="Campus Chicken logo" class="w-full h-full rounded-full object-cover">
+            </div>
+            <h1 class="text-white font-extrabold text-2xl leading-tight">Campus Chicken<br>SmartStall</h1>
+            <p class="text-amber-200 text-xs mt-2 tracking-wide">Skip the line, savor the time.</p>
+            <span class="mt-3 text-[10px] text-white/80 bg-white/15 px-3 py-1 rounded-full">Bulacan State University | Smart Stall</span>
+        </div>
+
+        <div class="bg-white rounded-t-[2.5rem] p-7 space-y-3 shadow-2xl">
+            <h2 class="text-center font-bold text-slate-800 text-base">Welcome!</h2>
+            <p class="text-center text-[11px] text-slate-500 pb-1">Log in or create an account to order from the stall.</p>
+            <button onclick="openPrivacyModal('login.html')" class="block w-full text-center bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-bold py-3.5 rounded-xl shadow-md text-sm cursor-pointer">
+                <i class="fa-solid fa-right-to-bracket mr-1"></i> Log in
+            </button>
+            <button onclick="openPrivacyModal('signup.html')" class="block w-full text-center bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl shadow-md text-sm cursor-pointer">
+                <i class="fa-solid fa-user-plus mr-1"></i> Sign up
+            </button>
+            <p class="text-center text-[10px] text-slate-400 pt-2">
+                Stall staff? <a href="admin_login.html" class="text-orange-600 font-bold">Admin portal</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- DATA PRIVACY NOTICE & USER CONSENT MODAL -->
+    <div id="modal-privacy" class="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl text-xs max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-sm uppercase text-slate-900"><i class="fa-solid fa-shield-halved text-orange-600 mr-1.5"></i> Data Privacy Notice & User Consent</h3>
+                <button onclick="closePrivacyModal()" class="text-slate-400 font-bold text-base hover:text-slate-700">✕</button>
+            </div>
+            
+            <div class="overflow-y-auto space-y-3 text-slate-600 text-[11px] pr-2 leading-relaxed">
+                <p class="font-semibold text-slate-800">
+                    In compliance with <strong>Republic Act No. 10173 (Philippine Data Privacy Act of 2012)</strong>, Campus Chicken SmartStall hereby notifies you that by registering an account and using this pre-ordering platform, you consent to the collection, processing, and storage of the following personal data:
+                </p>
+                
+                <div class="bg-orange-50 p-3 rounded-xl border border-orange-200 space-y-1.5">
+                    <strong class="text-orange-900 block">📋 Personal Information:</strong>
+                    <p class="text-slate-700">Full Name, Email Address, and Account Credentials (encrypted passwords).</p>
+                </div>
+
+                <div class="bg-orange-50 p-3 rounded-xl border border-orange-200 space-y-1.5">
+                    <strong class="text-orange-900 block">🧾 Transaction Data:</strong>
+                    <p class="text-slate-700">List of selected food items, Timestamp of orders, Payment Method (GCash transaction status or Cash), and Queue Completion Records.</p>
+                </div>
+
+                <div>
+                    <strong class="text-slate-800 block mb-1">🎯 Purpose of Data Processing:</strong>
+                    <p>Your personal data is collected for account authentication and meal queue ticket processing, live preparation progress updates, and demand prediction analytics reporting of aggregated, anonymized food items statistics for inventory management purposes. Your financial data and sensitive information such as passwords are not processed or stored by the system.</p>
+                </div>
+
+                <div>
+                    <strong class="text-slate-800 block mb-1">🔒 Data Protection & Rights:</strong>
+                    <p>All encrypted information is processed using industry-standard hashing algorithms. You may request the erasure of your personal data or account information at any time by contacting the system administrators.</p>
+                </div>
+            </div>
+
+            <div class="border-t pt-3 space-y-3">
+                <label class="flex items-start gap-2 cursor-pointer text-slate-800 font-medium">
+                    <input type="checkbox" id="privacy-checkbox" class="mt-0.5 accent-orange-500 w-4 h-4 shrink-0">
+                    <span>I have read, understood, and agreed to the Data Privacy Notice and Terms of Service.</span>
+                </label>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="acceptPrivacy()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-xs shadow cursor-pointer">
+                        Accept & Proceed
+                    </button>
+                    <button onclick="closePrivacyModal()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs cursor-pointer">
+                        Decline
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app-ui.js"></script>
+    <script>
+        let pendingDestination = 'login.html';
+
+        function openPrivacyModal(destination) {
+            pendingDestination = destination;
+            document.getElementById('privacy-checkbox').checked = false;
+            document.getElementById('modal-privacy').classList.remove('hidden');
+        }
+
+        function closePrivacyModal() {
+            document.getElementById('modal-privacy').classList.add('hidden');
+        }
+
+        function acceptPrivacy() {
+            let checkbox = document.getElementById('privacy-checkbox');
+            if (!checkbox.checked) {
+                appToast("Please check the agreement box to proceed.");
+                return;
+            }
+            localStorage.setItem('cc_privacy_accepted', 'true');
+            window.location.href = pendingDestination;
+        }
+    </script>
+</body>
+</html>

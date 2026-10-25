@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Owner Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="app-ui.js"></script>
+</head>
+<body class="admin-body" style="justify-content: flex-start; align-items: stretch;">
+<header id="portal-header" class="brand-header flex flex-wrap gap-2 justify-between items-center shadow-lg"></header>
+
+<div class="admin-shell flex flex-grow max-w-7xl mx-auto w-full p-4 gap-4">
+    <aside id="portal-side" class="admin-side w-64 bg-white rounded-2xl shadow-xl p-4 flex flex-col shrink-0 self-start"></aside>
+    <main class="admin-main flex-grow min-w-0 space-y-4">
+
+        <!-- 1. DASHBOARD OVERVIEW TAB -->
+        <section id="tab-content-overview" class="space-y-4 hidden">
+            <div class="brand-header rounded-2xl flex justify-between items-center flex-wrap gap-2">
+                <div>
+                    <h2 class="font-bold text-base">SALES & FINANCIAL DASHBOARD</h2>
+                    <span class="text-[10px] text-amber-200">Real-time transactional revenue, AI analytics, and restock predictions</span>
+                </div>
+                <div class="flex gap-1 bg-white/20 p-1 rounded-xl">
+                    <button onclick="setSalesFilter('Daily')" id="filter-daily" class="px-3 py-1 text-white text-[10px] font-bold">DAILY</button>
+                    <button onclick="setSalesFilter('Weekly')" id="filter-weekly" class="px-3 py-1 text-white text-[10px] font-bold">WEEKLY</button>
+                    <button onclick="setSalesFilter('Monthly')" id="filter-monthly" class="px-3 py-1 text-white text-[10px] font-bold">MONTHLY</button>
+                    <button onclick="setSalesFilter('Annually')" id="filter-annually" class="px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-bold shadow">ANNUALLY</button>
+                </div>
+            </div>
+
+            <!-- 3 Metric Cards Grid including Best-Selling Item Card -->
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">TOTAL REVENUE</span>
+                    <h3 id="stat-revenue" class="text-2xl font-extrabold text-slate-900 mt-1">₱ 0.00</h3>
+                    <span class="text-[10px] text-emerald-600 font-semibold"><i class="fa-solid fa-arrow-up"></i> Live synced with sales</span>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">ORDERS COMPLETED</span>
+                    <h3 id="stat-orders" class="text-2xl font-extrabold text-slate-900 mt-1">0 Orders</h3>
+                    <span class="text-[10px] text-blue-600 font-semibold">Avg prep: 4.2 mins</span>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 bg-gradient-to-br from-amber-50 to-orange-50">
+                    <span class="text-[10px] text-amber-800 font-bold uppercase tracking-wider block">🤖 AI BEST-SELLING ITEM</span>
+                    <h3 id="stat-bestseller" class="text-sm font-extrabold text-slate-900 mt-1 truncate">None Yet</h3>
+                    <span class="text-[10px] text-amber-700 font-semibold">Based on order history</span>
+                </div>
+            </div>
+
+            <!-- Graphs & Category Share Grid -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                    <h3 id="chart-title" class="font-bold text-slate-800 text-xs uppercase tracking-wider">Annual Sales Trend (Line Graph over Months)</h3>
+                    <div id="chart-container" class="min-h-44 bg-orange-50/60 rounded-xl border border-dashed border-orange-300 p-3 flex flex-col justify-end"></div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 space-y-3">
+                    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Menu Category Shares</h3>
+                    <div id="category-shares" class="space-y-2.5 pt-2 text-xs"></div>
+                </div>
+            </div>
+
+            <!-- Restock ML/AI Predictive Panel -->
+            <div class="panel space-y-3 border-orange-300 bg-orange-50/30">
+                <h3 class="panel-title"><i class="fa-solid fa-robot text-orange-600 mr-1"></i> Restock ML/AI Predictive Analysis</h3>
+                <p class="text-xs text-slate-600">Exponential smoothing demand model estimating inventory depletion points:</p>
+                <div id="restock-ml-recommendations" class="grid sm:grid-cols-2 gap-3"></div>
+            </div>
+
+            <!-- Export Sales Report Bar -->
+            <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200 flex justify-between items-center flex-wrap gap-2">
+                <span class="font-bold text-slate-800 text-xs">EXPORT SALES & ANALYTICS REPORT</span>
+                <div class="flex gap-2">
+                    <button onclick="downloadReport('PDF')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-pdf mr-1"></i> Download PDF</button>
+                    <button onclick="exportOrdersCSV()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-csv mr-1"></i> Export CSV</button>
+                    <button onclick="exportOrdersExcel()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-excel mr-1"></i> Export Excel</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. MENU & INVENTORY TAB -->
+        <section id="tab-content-menu" class="space-y-4 hidden">
+            <div class="brand-header rounded-2xl flex flex-wrap justify-between items-center gap-3">
+                <div>
+                    <h2 class="font-bold text-base">Menu & Inventory</h2>
+                    <span class="text-[10px] text-amber-100">Edit menu details, photos, prices, stock, and availability.</span>
+                </div>
+                <button type="button" onclick="openOwnerMenuEditor()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-4 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-plus mr-1"></i> Add Menu Item</button>
+            </div>
+            <div class="panel overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead><tr class="bg-orange-50 text-slate-500"><th class="p-2.5">Photo</th><th class="p-2.5">Item</th><th class="p-2.5">Category</th><th class="p-2.5">Price</th><th class="p-2.5">Stock</th><th class="p-2.5">Availability</th><th class="p-2.5 text-right">Action</th></tr></thead>
+                    <tbody id="owner-menu" class="divide-y divide-orange-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 3. ORDERS & SALES TAB (Dynamic Metrics & Table) -->
+        <section id="tab-content-orders" class="space-y-4 hidden">
+            <div class="brand-header rounded-2xl flex justify-between items-center flex-wrap gap-2">
+                <div>
+                    <h2 class="font-bold text-base">Orders & Sales Management</h2>
+                    <span class="text-[10px] text-amber-100">All active and completed orders recorded by this browser.</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportOrdersCSV()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-3 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-csv mr-1"></i> Export CSV</button>
+                    <button onclick="exportOrdersExcel()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-3 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-file-excel mr-1"></i> Export Excel</button>
+                </div>
+            </div>
+
+            <!-- Dynamic Metric Cards Grid -->
+            <div id="owner-stats-orders" class="grid grid-cols-3 gap-3"></div>
+
+            <div class="panel overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead><tr class="bg-orange-50 text-slate-500"><th class="p-2.5">Order ID</th><th class="p-2.5">Customer</th><th class="p-2.5">Type / Pay</th><th class="p-2.5">Status</th><th class="p-2.5 text-right">Total</th></tr></thead>
+                    <tbody id="owner-all-orders" class="divide-y divide-orange-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <div id="owner-menu-editor" class="app-dialog-overlay hidden">
+            <section class="app-dialog max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="owner-menu-editor-title">
+                <h2 id="owner-menu-editor-title" class="text-sm font-bold text-slate-800 mb-3 pb-2 border-b">Edit Menu Item</h2>
+                <div class="space-y-3 text-xs">
+                    <label class="block font-bold text-slate-700">Item Name<input id="owner-menu-name" type="text" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                    <label class="block font-bold text-slate-700">Category
+                        <select id="owner-menu-category" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500">
+                            <option value="Chicken">Chicken</option>
+                            <option value="Meals">Meals</option>
+                            <option value="Drinks">Drinks</option>
+                            <option value="Snacks">Snacks</option>
+                        </select>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block font-bold text-slate-700">Price (₱)<input id="owner-menu-price" type="number" min="0" step="1.00" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                        <label class="block font-bold text-slate-700">Stock Count<input id="owner-menu-stock" type="number" min="0" step="1" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                    </div>
+                    <label class="flex items-center gap-2 font-bold text-slate-700"><input id="owner-menu-active" type="checkbox" class="accent-orange-500 w-4 h-4"> Available for sale</label>
+                    <label class="block font-bold text-slate-700">Photo<input id="owner-menu-photo-file" type="file" accept="image/*" class="mt-1 block w-full text-xs"></label>
+                    <img id="owner-menu-photo-preview" alt="Preview" class="hidden w-20 h-20 object-cover rounded-xl border">
+                </div>
+                <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
+                    <button type="button" onclick="closeOwnerMenuEditor()" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs">Cancel</button>
+                    <button type="button" onclick="saveOwnerMenuItem()" class="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow">Save Item</button>
+                </div>
+            </section>
+        </div>
+
+    </main>
+</div>
+
+<script src="app-ui.js"></script>
+<script src="portal.js"></script>
+<script>
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function isImg(p) { return !!p && (p.startsWith('data:image/') || p.startsWith('images/') || p.startsWith('http')); }
+    function thumb(name, size) {
+        let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || localStorage.getItem('cc_menu') || '[]');
+        let item = inventoryData.find(i => i.name === name);
+        let p = item && item.photo;
+        return isImg(p) ? `<img src="${esc(p)}" alt="" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:8px;flex-shrink:0">` : `<span style="font-size:${Math.round(size * .8)}px;line-height:1">${esc(p || '🍲')}</span>`;
+    }
+
+    let currentSalesFilter = 'annually';
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const PERIOD_CFG = {
+        daily:    { title: 'Hourly Sales Trend (Today)', type: 'bar',  labels: ['7A','8A','9A','10A','11A','12P','1P','2P','3P','4P','5P','6P','7P'] },
+        weekly:   { title: 'Weekly Sales Trend (Mon - Sun)', type: 'bar',  labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] },
+        monthly:  { title: 'Monthly Sales Trend (Line Graph over Weeks)', type: 'line', labels: ['Week 1','Week 2','Week 3','Week 4','Week 5'] },
+        annually: { title: 'Annual Sales Trend (Line Graph over Months)', type: 'line', labels: MONTHS }
+    };
+
+    function setSalesFilter(filter) {
+        currentSalesFilter = String(filter).toLowerCase();
+        Object.keys(PERIOD_CFG).forEach(f => {
+            let btn = document.getElementById(`filter-${f}`);
+            if (btn) {
+                btn.className = f === currentSalesFilter
+                    ? "px-3 py-1 bg-white text-orange-600 rounded-lg text-[10px] font-bold shadow"
+                    : "px-3 py-1 text-white text-[10px] font-bold";
+            }
+        });
+        updateDashboardMetrics();
+    }
+
+    function periodIndex(period, t, now) {
+        if(period === 'daily') return t.toDateString() === now.toDateString() ? Math.min(12, Math.max(0, t.getHours() - 7)) : -1;
+        if(period === 'weekly') {
+            let start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+            let day = new Date(t); day.setHours(0, 0, 0, 0);
+            let d = Math.round((day - start) / 864e5);
+            return d >= 0 && d < 7 ? d : -1;
+        }
+        if(period === 'monthly') return t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth() ? Math.min(4, Math.floor((t.getDate() - 1) / 7)) : -1;
+        return t.getFullYear() === now.getFullYear() ? t.getMonth() : -1;
+    }
+
+    function salesChartHtml(cfg, vals) {
+        let max = Math.max(...vals), peak = max > 0 ? vals.indexOf(max) : -1, n = vals.length;
+        let labels = `<div class="flex text-[9px] text-slate-500 font-bold pt-1 border-t">${cfg.labels.map(l => `<span class="flex-1 text-center">${l}</span>`).join('')}</div>`;
+        let note = max > 0 ? '' : '<p class="text-center text-[10px] text-slate-400 pt-1">No completed orders in this period yet.</p>';
+        if(cfg.type === 'bar') {
+            return `<div class="flex items-end gap-1 h-28 px-1">${vals.map((v, i) => `
+                    <div class="flex-1 h-full flex flex-col justify-end" title="₱${v.toFixed(2)}">
+                        <div class="relative rounded-t ${i === peak ? 'bg-orange-600' : 'bg-orange-400'}" style="height:${max ? Math.max(4, v / max * 100) : 4}%;${max ? '' : 'opacity:.3'}">
+                            ${i === peak ? '<span class="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] font-bold text-orange-700">PEAK</span>' : ''}
+                        </div>
+                    </div>`).join('')}</div>${labels}${note}`;
+        }
+        let pts = vals.map((v, i) => [(i + 0.5) / n * 400, 92 - (max ? v / max * 80 : 0)]);
+        let line = pts.map(p => p.join(',')).join(' ');
+        return `<div class="h-28"><svg class="w-full h-full overflow-visible" viewBox="0 0 400 100" preserveAspectRatio="none" fill="none">
+                <polygon points="${pts[0][0]},100 ${line} ${pts[n - 1][0]},100" fill="rgba(249,115,22,.15)"></polygon>
+                <polyline points="${line}" stroke="#ea580c" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+                ${max ? `<circle cx="${pts[peak][0]}" cy="${pts[peak][1]}" r="4" fill="#c2410c"></circle>` : ''}</svg></div>${labels}${note}`;
+    }
+
+    function updateDashboardMetrics() {
+        let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+        let inventoryData = JSON.parse(localStorage.getItem('cc_synced_inventory') || localStorage.getItem('cc_menu') || '[]');
+        let now = new Date(), cfg = PERIOD_CFG[currentSalesFilter];
+        let vals = cfg.labels.map(() => 0), inPeriod = [];
+
+        history.forEach(o => {
+            let i = periodIndex(currentSalesFilter, new Date(o.completedAt || o.createdAt || Date.now()), now);
+            if(i < 0) return;
+            vals[i] += Number(o.total || 0);
+            inPeriod.push(o);
+        });
+        let rev = vals.reduce((s, v) => s + v, 0);
+
+        if(document.getElementById('chart-title')) document.getElementById('chart-title').innerText = cfg.title;
+        if(document.getElementById('chart-container')) document.getElementById('chart-container').innerHTML = salesChartHtml(cfg, vals);
+        if(document.getElementById('stat-revenue')) document.getElementById('stat-revenue').innerText = `₱ ${rev.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        if(document.getElementById('stat-orders')) document.getElementById('stat-orders').innerText = `${inPeriod.length} Orders`;
+
+        let counts = {}, catTotals = {}, grand = 0;
+        let historyForBest = history.length ? history : JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        historyForBest.forEach(ord => (ord.rawItems || []).forEach(ri => {
+            counts[ri.name] = (counts[ri.name] || 0) + ri.qty;
+        }));
+        inPeriod.forEach(ord => (ord.rawItems || []).forEach(ri => {
+            let inv = inventoryData.find(i => i.name === ri.name);
+            let cat = inv ? inv.category : 'Other';
+            catTotals[cat] = (catTotals[cat] || 0) + ri.qty;
+            grand += ri.qty;
+        }));
+        let best = Object.keys(counts).sort((x, y) => counts[y] - counts[x])[0];
+        if(document.getElementById('stat-bestseller')) {
+            document.getElementById('stat-bestseller').innerHTML = best ? `<span class="inline-flex items-center gap-2">${thumb(best, 22)}<span>${esc(best)}</span></span>` : 'None Yet';
+        }
+
+        let colors = { Chicken: '#f97316', Meals: '#f59e0b', Drinks: '#3b82f6', Snacks: '#10b981', Other: '#94a3b8' };
+        let catSharesEl = document.getElementById('category-shares');
+        if(catSharesEl) {
+            catSharesEl.innerHTML = Object.keys(colors).filter(c => c !== 'Other' || catTotals.Other).map(c => {
+                let pct = grand ? Math.round((catTotals[c] || 0) / grand * 100) : 0;
+                return `<div><div class="flex justify-between mb-1"><span>${c}</span><strong class="text-orange-600">${pct}%</strong></div><div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${pct}%;background:${colors[c]}"></div></div></div>`;
+            }).join('');
+        }
+        renderRestockML();
+    }
+
+    // Restock ML Forecast
+    function forecastRestock(item) {
+        let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+        let daily = {}, sold = 0;
+        history.forEach(o => {
+            let day = new Date(o.completedAt || o.createdAt || Date.now()).toDateString();
+            (o.rawItems || []).forEach(r => { if(r.name === item.name) { daily[day] = (daily[day] || 0) + r.qty; sold += r.qty; } });
+        });
+        if(sold === 0) return { rop: 10, learning: true };
+        let series = [];
+        for(let i = 13; i >= 0; i--) series.push(daily[new Date(Date.now() - i * 864e5).toDateString()] || 0);
+        let ewma = series.reduce((m, v) => 0.4 * v + 0.6 * m, series[0]);
+        let mean = series.reduce((s, v) => s + v, 0) / series.length;
+        let sd = Math.sqrt(series.reduce((s, v) => s + (v - mean) ** 2, 0) / series.length);
+        return { rop: Math.max(3, Math.ceil(ewma + 1.65 * sd)), learning: false };
+    }
+
+    function renderRestockML() {
+        let menu = JSON.parse(localStorage.getItem('cc_synced_inventory') || localStorage.getItem('cc_menu') || '[]');
+        let container = document.getElementById('restock-ml-recommendations');
+        if (!container) return;
+        if (menu.length === 0) {
+            container.innerHTML = `<p class="text-xs text-slate-500">No inventory data found for ML analysis.</p>`;
+            return;
+        }
+        container.innerHTML = menu.map(item => {
+            let f = forecastRestock(item);
+            let isLow = item.stock <= f.rop;
+            let statusColor = isLow ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800';
+            let alertBadge = isLow ? `<span class="badge-red">Restock Now</span>` : `<span class="badge-green">Optimal</span>`;
+            return `
+                    <div class="p-3 rounded-xl border ${statusColor} text-xs flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1">
+                            <strong class="text-slate-800">${esc(item.name)}</strong>
+                            ${alertBadge}
+                        </div>
+                        <div class="text-[11px] opacity-90 mt-1">
+                            Current Stock: <b>${item.stock}</b> · AI Reorder Point (ROP): <b>${f.rop} units</b>
+                            <span class="text-[9px] text-slate-400 block">${f.learning ? '(Default baseline - collecting order history)' : '(Calculated via 14-day EWMA demand)'}</span>
+                        </div>
+                    </div>
+                `;
+        }).join('');
+    }
+
+    // Export Functions
+    window.exportOrdersCSV = function() {
+        let orders = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+        if (orders.length === 0) {
+            if (window.appToast) window.appToast("No order history available to export.");
+            return;
+        }
+        let csv = "OrderID,Customer,Type,Payment,Total,Status\n" + orders.map(o => `${o.id},"${o.customerName || o.customer || 'Guest'}","${o.type}","${o.pay}",${o.total},"${o.status}"`).join("\n");
+        let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `Campus_Chicken_Sales_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        if (window.appToast) window.appToast("CSV export downloaded successfully!");
+        if (window.logSystemAudit) {
+            window.logSystemAudit('ANALYTICS', 'Owner exported sales report in CSV format.');
+        }
+    };
+
+    window.exportOrdersExcel = function() {
+        let orders = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+        if (orders.length === 0) {
+            if (window.appToast) window.appToast("No order history available to export.");
+            return;
+        }
+        let html = `<table><tr><th>OrderID</th><th>Customer</th><th>Type</th><th>Payment</th><th>Total</th><th>Status</th></tr>` +
+            orders.map(o => `<tr><td>${o.id}</td><td>${o.customerName || o.customer || 'Guest'}</td><td>${o.type}</td><td>${o.pay}</td><td>₱${o.total}</td><td>${o.status}</td></tr>`).join('') + `</table>`;
+        let blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `Campus_Chicken_Sales_${new Date().toISOString().slice(0,10)}.xls`;
+        a.click();
+        if (window.appToast) window.appToast("Excel export downloaded successfully!");
+        if (window.logSystemAudit) {
+            window.logSystemAudit('ANALYTICS', 'Owner exported sales report in Excel format.');
+        }
+    };
+
+    window.downloadReport = function(format) {
+        if (window.appToast) window.appToast(`Sales report successfully downloaded as ${format}!`);
+        if (window.logSystemAudit) {
+            window.logSystemAudit('ANALYTICS', `Owner exported sales report in ${format.toUpperCase()} format.`);
+        }
+    };
+
+    // Render Owner Orders Tab with Dynamic Metrics (Completed Sales, Completed Orders, Active Orders)
+    function renderOwnerOrdersTab() {
+        let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+        let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+
+        let completedSales = history.reduce((sum, o) => sum + Number(o.total || 0), 0);
+        let completedOrdersCount = history.length;
+        let activeOrdersCount = queue.length;
+
+        let statsOrdersEl = document.getElementById('owner-stats-orders');
+        if(statsOrdersEl) {
+            statsOrdersEl.innerHTML = `
+                <div class="bg-white p-3.5 rounded-2xl border border-orange-200 shadow-lg">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Completed Sales</span>
+                    <h3 class="text-xl font-extrabold text-slate-900 mt-1">₱${completedSales.toFixed(2)}</h3>
+                </div>
+                <div class="bg-white p-3.5 rounded-2xl border border-orange-200 shadow-lg">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Completed Orders</span>
+                    <h3 class="text-xl font-extrabold text-slate-900 mt-1">${completedOrdersCount}</h3>
+                </div>
+                <div class="bg-white p-3.5 rounded-2xl border border-orange-200 shadow-lg">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Active Orders</span>
+                    <h3 class="text-xl font-extrabold text-slate-900 mt-1">${activeOrdersCount}</h3>
+                </div>
+            `;
+        }
+
+        let tbody = document.getElementById('owner-all-orders');
+        if(!tbody) return;
+        let all = queue.concat(history);
+
+        if(all.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">No orders recorded yet.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = all.map(o => {
+            let status = o.status === 'complete' ? 'completed' : o.status;
+            let isGreen = status === 'completed' || status === 'ready';
+            return `
+                <tr class="hover:bg-orange-50/50">
+                    <td class="p-2.5 font-bold text-slate-800">#${o.id}</td>
+                    <td class="p-2.5">${esc(o.customerName || o.customer || 'Guest')}</td>
+                    <td class="p-2.5">${esc(o.type)} · ${esc(o.pay)}</td>
+                    <td class="p-2.5"><span class="${isGreen ? 'badge-green' : 'badge-red'}">${status}</span></td>
+                    <td class="p-2.5 text-right font-bold text-slate-900">₱${Number(o.total || 0).toFixed(2)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    Portal.onTab = {
+        overview: updateDashboardMetrics,
+        menu: renderOwnerMenu,
+        orders: renderOwnerOrdersTab
+    };
+    Portal.init('owner', [
+        { id: 'overview', label: 'Dashboard & AI', icon: 'fa-chart-pie', group: 'Stall' },
+        { id: 'menu', label: 'Menu & Pricing', icon: 'fa-utensils', group: 'Stall' },
+        { id: 'orders', label: 'Orders & Sales', icon: 'fa-receipt', group: 'Sales' }
+    ], 'overview');
+
+    if(document.getElementById('owner-menu-photo-file')) {
+        document.getElementById('owner-menu-photo-file').addEventListener('change', previewOwnerMenuPhoto);
+    }
+
+    window.addEventListener('cc-inventory-updated', () => {
+        if (typeof renderOwnerMenu === 'function') renderOwnerMenu();
+        if (typeof updateDashboardMetrics === 'function') updateDashboardMetrics();
+    });
+
+</script>
+</body>
+</html>
