@@ -635,18 +635,18 @@
             if (index === undefined) return;
             values[index] += metric === 'revenue' ? orderTotal(order) : 1;
         });
-        const observations = values.filter(value => value > 0).length;
+        // fit on COMPLETED periods only, starting at the first period that had sales
+        const done = values.slice(0, -1);
+        const firstSale = done.findIndex(value => value > 0);
+        const fit = firstSale < 0 ? [] : done.slice(firstSale);
+        const observations = fit.filter(value => value > 0).length;
         let prediction = null;
         if (observations >= 3) {
-            const meanX = (values.length - 1) / 2;
-            const meanY = values.reduce((sum, value) => sum + value, 0) / values.length;
-            let numerator = 0;
-            let denominator = 0;
-            values.forEach((value, index) => {
-                numerator += (index - meanX) * (value - meanY);
-                denominator += (index - meanX) ** 2;
-            });
-            prediction = Math.max(0, meanY + (denominator ? numerator / denominator : 0) * (values.length - meanX));
+            const meanX = (fit.length - 1) / 2;
+            const meanY = fit.reduce((sum, value) => sum + value, 0) / fit.length;
+            let numerator = 0, denominator = 0;
+            fit.forEach((value, index) => { numerator += (index - meanX) * (value - meanY); denominator += (index - meanX) ** 2; });
+            prediction = Math.max(0, meanY + (denominator ? numerator / denominator : 0) * (fit.length + 1 - meanX));
         }
         return {
             labels: starts.map(date => periodLabel(date, config.step)),

@@ -308,6 +308,7 @@
         if(document.getElementById('count-pending')) document.getElementById('count-pending').innerText = pCount;
         if(document.getElementById('count-prep')) document.getElementById('count-prep').innerText = prCount;
         if(document.getElementById('count-ready')) document.getElementById('count-ready').innerText = rCount;
+        updateKdsHeaderCounts();
     }
 
     function updateOrderStatus(id, newStatus) {
@@ -339,6 +340,13 @@
         localStorage.setItem('cc_synced_queue', JSON.stringify(queue));
         if (typeof renderKitchenKanban === 'function') renderKitchenKanban();
         if (window.appToast) window.appToast(`Order #${id} updated to ${newStatus}!`);
+    }
+
+    function updateKdsHeaderCounts() {
+        const q = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        const n = s => q.filter(o => o.status === s).length;
+        const el = document.getElementById('hdr-counts');
+        if (el) el.textContent = `Pending ${n('pending')} · Preparing ${n('prep')} · Ready ${n('ready')}`;
     }
 
     Portal.onTab = { pos: renderPOS, queue: renderKitchenKanban, availability: renderAvailability };

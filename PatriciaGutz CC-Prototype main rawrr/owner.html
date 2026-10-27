@@ -451,10 +451,11 @@
         const ts = o => Number(o.createdAt || o.completedAt || 0);
 
         // 1) AI demand: least-squares line through the last 7 daily order counts -> tomorrow
-        const daily = [];
-        for (let i = 6; i >= 0; i--) { const from = today0 - i * DAY; daily.push(history.filter(o => ts(o) >= from && ts(o) < from + DAY).length); }
-        const first = daily.findIndex(v => v > 0);
-        const y = first < 0 ? [] : daily.slice(first), n = y.length;
+        const dayStart = t => new Date(t).setHours(0, 0, 0, 0);
+        const stamps = history.map(ts).filter(t => t > 0);
+        const histDays = stamps.length ? Math.min(14, Math.round((today0 - dayStart(stamps.reduce((m, t) => Math.min(m, t), Infinity))) / DAY) + 1) : 0;
+        const n = Math.min(7, histDays - 1), y = [];               // up to 7 COMPLETE days; today is unfinished
+        for (let i = n; i >= 1; i--) { const from = today0 - i * DAY; y.push(history.filter(o => ts(o) >= from && ts(o) < from + DAY).length); }
         const dEl = document.getElementById('stat-demand'), dNote = document.getElementById('stat-demand-note');
         if (dEl) {
             if (n < 3) { dEl.textContent = '—'; dNote.textContent = 'Needs 3+ days of sales history'; }
@@ -462,7 +463,7 @@
                 const sx = n * (n - 1) / 2, sxx = (n - 1) * n * (2 * n - 1) / 6;
                 const sy = y.reduce((a, b) => a + b, 0), sxy = y.reduce((a, v, i) => a + i * v, 0);
                 const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx), intercept = (sy - slope * sx) / n;
-                const next = Math.max(0, intercept + slope * n);
+                const next = Math.max(0, intercept + slope * (n + 1));
                 const avgOrder = history.reduce((a, o) => a + Number(o.total || 0), 0) / history.length;
                 dEl.textContent = `~${Math.round(next)} orders tomorrow`;
                 dNote.textContent = `${slope > 0.2 ? '▲ rising' : slope < -0.2 ? '▼ falling' : '► steady'} (${slope >= 0 ? '+' : ''}${slope.toFixed(1)}/day) · ≈ ₱${Math.round(next * avgOrder).toLocaleString('en-US')} · linear regression, ${n}-day window`;
@@ -471,7 +472,7 @@
 
         // 2) Peak-hour forecast: recency-weighted (0.85/day) orders per hour of day
         const dayW = Array.from({ length: 14 }, (_, d) => Math.pow(0.85, d));
-        const wDays = first < 0 ? 0 : dayW.slice(0, 14 - first).reduce((a, b) => a + b, 0);
+        const wDays = dayW.slice(0, histDays).reduce((a, b) => a + b, 0);
         const hrs = Array(24).fill(0);
         history.forEach(o => {
             const age = Math.round((today0 - new Date(ts(o)).setHours(0, 0, 0, 0)) / DAY);
