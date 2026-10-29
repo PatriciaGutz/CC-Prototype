@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Chicken SmartStall - Kitchen Personnel Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-body" style="justify-content: flex-start; align-items: stretch;">
+
+<header id="portal-header" class="brand-header flex flex-wrap gap-2 justify-between items-center shadow-lg"></header>
+
+<div class="admin-shell flex flex-grow max-w-7xl mx-auto w-full p-4 gap-4">
+    <aside id="portal-side" class="admin-side w-64 bg-white rounded-2xl shadow-xl p-4 flex flex-col shrink-0 self-start"></aside>
+    <main class="admin-main flex-grow min-w-0 space-y-4">
+
+        <!-- 1. KITCHEN DISPLAY & KANBAN -->
+        <div id="tab-content-kds" class="space-y-4 hidden">
+
+            <div class="brand-header rounded-2xl flex justify-between items-center">
+                <div>
+                    <h2 class="font-bold text-base">Kitchen Display & Live Queue</h2>
+                    <span class="text-[10px] text-amber-200">Accept orders, mark them Ready, and complete pickups.</span>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <span id="hdr-counts" class="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold">Pending 0 · Preparing 0 · Ready 0</span>
+                    <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">🟢 IoT Beeper Connected</span>
+                </div>
+            </div>
+
+            <!-- Quick Filter & Search Bar -->
+            <div class="bg-white p-3 rounded-xl shadow border flex gap-3 text-xs">
+                <input type="text" id="kitchen-search" oninput="renderKitchenKanban()" placeholder="Search by Queue # or Customer Name..." class="flex-grow bg-slate-50 border rounded-xl p-2 outline-none focus:border-orange-500">
+                <select id="kitchen-status-filter" onchange="renderKitchenKanban()" class="bg-slate-50 border rounded-xl p-2 text-slate-700">
+                    <option value="all">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="prep">Preparing</option>
+                    <option value="ready">Ready for Pickup</option>
+                </select>
+            </div>
+
+            <div id="iot-alerts" class="panel space-y-2 !p-3"></div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-amber-100/90 p-3 rounded-2xl border border-orange-300 h-[380px] flex flex-col shadow-inner">
+                    <div class="flex justify-between items-center mb-2 font-bold text-xs text-orange-900">
+                        <span>PENDING</span>
+                        <span id="count-pending" class="bg-orange-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    </div>
+                    <div id="kanban-pending" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                </div>
+
+                <div class="bg-blue-50/90 p-3 rounded-2xl border border-blue-200 h-[380px] flex flex-col shadow-inner">
+                    <div class="flex justify-between items-center mb-2 font-bold text-xs text-blue-900">
+                        <span>PREPARING</span>
+                        <span id="count-prep" class="bg-blue-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    </div>
+                    <div id="kanban-prep" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                </div>
+
+                <div class="bg-emerald-50/90 p-3 rounded-2xl border border-emerald-200 h-[380px] flex flex-col shadow-inner">
+                    <div class="flex justify-between items-center mb-2 font-bold text-xs text-emerald-900">
+                        <span>FOR PICKUP</span>
+                        <span id="count-ready" class="bg-emerald-200 px-2 py-0.5 rounded-full text-[10px]">0</span>
+                    </div>
+                    <div id="kanban-ready" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. INVENTORY MANAGEMENT TAB -->
+        <div id="tab-content-inventory" class="space-y-4 hidden">
+            <div class="brand-header rounded-2xl flex justify-between items-center flex-wrap gap-2">
+                <div>
+                    <h2 class="font-bold text-base">Inventory Management</h2>
+                    <span class="text-[10px] text-amber-200">Track kitchen ingredients, packaging, and tools without menu photos</span>
+                </div>
+                <button type="button" onclick="openKitchenItemModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold px-3.5 py-2 rounded-xl text-xs shadow"><i class="fa-solid fa-plus mr-1"></i> Add Inventory Item</button>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-lg border border-orange-200">
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <input id="kitchen-inventory-search" type="search" oninput="renderKitchenInventory()" placeholder="Search inventory..." class="flex-grow min-w-48 bg-slate-50 border rounded-xl p-2 text-xs">
+                    <label class="flex items-center gap-2 text-xs"><input id="show-archived-inventory" type="checkbox" onchange="renderKitchenInventory()" class="accent-orange-500"> Show archived</label>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                        <tr class="bg-orange-600 text-white rounded-lg">
+                            <th class="p-2.5 rounded-l-xl">Ingredient / Tool</th>
+                            <th class="p-2.5">Type</th>
+                            <th class="p-2.5">Unit</th>
+                            <th class="p-2.5">Stock</th>
+                            <th class="p-2.5">Restock At</th>
+                            <th class="p-2.5">Expiry Date</th>
+                            <th class="p-2.5">Status</th>
+                            <th class="p-2.5 rounded-r-xl text-right">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-orange-100"></tbody>
+                    </table>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-3">Archive retains an item in the inventory record. Archived inventory is hidden unless “Show archived” is selected.</p>
+            </div>
+        </div>
+
+        <!-- Kitchen Inventory Item Modal -->
+        <div id="kitchen-item-modal" class="app-dialog-overlay hidden">
+            <section class="app-dialog max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="kitchen-modal-title">
+                <h2 id="kitchen-modal-title" class="text-sm font-bold text-slate-800 mb-3 pb-2 border-b">Edit Inventory Item</h2>
+                <div class="space-y-3 text-xs">
+                    <label class="block font-bold text-slate-700">Ingredient or tool name<input id="kitchen-item-name" type="text" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1 outline-none focus:border-orange-500"></label>
+                    <label class="block font-bold text-slate-700">Type
+                        <select id="kitchen-item-category" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1">
+                            <option>Ingredient</option><option>Packaging</option><option>Utensil</option><option>Drink</option><option>Condiment</option><option>Tool</option>
+                        </select>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block font-bold text-slate-700">Unit<input id="kitchen-item-unit" type="text" placeholder="kg, pcs, bottles..." class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1"></label>
+                        <label class="block font-bold text-slate-700">Stock<input id="kitchen-item-stock" type="number" min="0" step="0.01" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1"></label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="block font-bold text-slate-700">Restock at<input id="kitchen-item-restock" type="number" min="0" step="0.01" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1"></label>
+                        <label class="block font-bold text-slate-700">Expiry date<input id="kitchen-item-expiry" type="date" class="w-full bg-slate-50 border rounded-xl p-2.5 mt-1"></label>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-4 pt-3 border-t">
+                    <button type="button" onclick="closeKitchenItemModal()" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs">Back</button>
+                    <button type="button" onclick="saveKitchenItem()" class="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow">Save Item</button>
+                </div>
+            </section>
+        </div>
+
+    </main>
+</div>
+
+<script src="app-ui.js"></script>
+<script src="portal.js"></script>
+<script>
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    let seen = new Set(JSON.parse(localStorage.getItem('cc_synced_queue') || '[]').map(o => o.id));
+    setInterval(() => {
+        const q = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        q.filter(o => o.status === 'pending' && !seen.has(o.id))
+            .forEach(o => appToast(`🔔 IoT Beeper + LED triggered: new order #${o.id}`));
+        seen = new Set(q.map(o => o.id));
+    }, 1500);
+
+    let editingIndex = null;
+    const KITCHEN_INVENTORY_KEY = 'cc_kitchen_inventory';
+    const DEFAULT_KITCHEN_INVENTORY = [
+        { name: 'Chicken', category: 'Ingredient', unit: 'kg', stock: 12, restockAt: 4 },
+        { name: 'Java rice', category: 'Ingredient', unit: 'kg', stock: 18, restockAt: 5 },
+        { name: 'Gravy mix', category: 'Ingredient', unit: 'kg', stock: 4, restockAt: 1 },
+        { name: 'Paper bowl', category: 'Packaging', unit: 'pcs', stock: 150, restockAt: 40 },
+        { name: 'Spoon and fork set', category: 'Utensil', unit: 'sets', stock: 150, restockAt: 40 },
+        { name: 'Iced tea', category: 'Drink', unit: 'L', stock: 24, restockAt: 6 },
+        { name: 'Sriracha sauce', category: 'Condiment', unit: 'bottles', stock: 6, restockAt: 2 },
+        { name: 'Cooking oil', category: 'Ingredient', unit: 'L', stock: 8, restockAt: 2 },
+        { name: 'Garlic', category: 'Ingredient', unit: 'kg', stock: 2, restockAt: 0.5 },
+        { name: 'Black pepper', category: 'Ingredient', unit: 'kg', stock: 1, restockAt: 0.25 },
+        { name: 'Salt', category: 'Ingredient', unit: 'kg', stock: 3, restockAt: 1 },
+        { name: 'Food tongs', category: 'Tool', unit: 'pcs', stock: 4, restockAt: 1 }
+    ];
+
+    function getKitchenInventory() {
+        const saved = localStorage.getItem(KITCHEN_INVENTORY_KEY);
+        if (saved === null) {
+            localStorage.setItem(KITCHEN_INVENTORY_KEY, JSON.stringify(DEFAULT_KITCHEN_INVENTORY));
+            return DEFAULT_KITCHEN_INVENTORY.map(item => ({ ...item }));
+        }
+        const items = JSON.parse(saved);
+        if (!Array.isArray(items)) throw new TypeError('Kitchen inventory must be a list.');
+        return items;
+    }
+
+    function saveKitchenInventory(items) {
+        localStorage.setItem(KITCHEN_INVENTORY_KEY, JSON.stringify(items));
+        window.dispatchEvent(new Event('cc-kitchen-inventory-updated'));
+    }
+
+    // Colorful Kanban Rendering
+    function orderItemsHtml(order) {
+        let lines = (order.rawItems && order.rawItems.length ? order.rawItems : [{ name: order.items, qty: '' }]).map(r => {
+            const extras = Object.entries(r.addons || {}).filter(([, qty]) => Number(qty) > 0)
+                .map(([key, qty]) => `${Number(qty)}x ${key === 'gravy' ? 'Extra gravy' : 'Extra rice'}`).join(', ');
+            return `<div class="flex items-center gap-2"><span>${r.qty ? r.qty + 'x ' : ''}${esc(r.name)}${extras ? ` <small class="text-orange-600">(${esc(extras)})</small>` : ''}</span></div>`;
+        }).join('');
+        return `<div class="text-slate-600 space-y-1">${lines}<div class="text-[10px] text-slate-400">${esc(order.type)} · ${esc(order.pay || '')}</div></div>`;
+    }
+
+    function renderKitchenKanban() {
+        let pDiv = document.getElementById('kanban-pending');
+        let prDiv = document.getElementById('kanban-prep');
+        let rDiv = document.getElementById('kanban-ready');
+        if(!pDiv || !prDiv || !rDiv) return;
+
+        pDiv.innerHTML = '';
+        prDiv.innerHTML = '';
+        rDiv.innerHTML = '';
+
+        let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        let searchQuery = (document.getElementById('kitchen-search')?.value || '').toLowerCase();
+        let statusFilter = document.getElementById('kitchen-status-filter')?.value || 'all';
+
+        let pCount = 0, prCount = 0, rCount = 0;
+
+        queue.sort((x, y) => Number(x.id) - Number(y.id));
+        queue.forEach(order => {
+            let displayName = order.customerName || "Customer";
+            let sourceTag = order.source === 'Walk-In' ? '<span class="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Walk-In</span>' : '<span class="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Web</span>';
+
+            let etaInfo = window.etaBreakdown ? window.etaBreakdown(order) : { minutes: 3, complexity: 0, ahead: 0, speed: 1 };
+            let eta = etaInfo.minutes;
+
+            let matchSearch = String(order.id).includes(searchQuery) || displayName.toLowerCase().includes(searchQuery) || String(order.items).toLowerCase().includes(searchQuery);
+            if(!matchSearch) return;
+
+            let card = document.createElement('div');
+            card.className = "bg-white p-3 rounded-xl shadow-sm text-xs space-y-2 border border-orange-100 transition hover:shadow-md";
+
+            if(order.status === 'pending' && (statusFilter === 'all' || statusFilter === 'pending')) {
+                pCount++;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center pb-1 border-b border-orange-100">
+                        <strong class="text-orange-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
+                    </div>
+                    ${orderItemsHtml(order)}
+                    <div class="space-y-1.5 pt-1">
+                        <button onclick="updateOrderStatus('${order.id}', 'prep')" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Accept / Start Prep</button>
+                        <button onclick="cancelOrder('${order.id}')" class="w-full bg-red-100 hover:bg-red-200 text-red-700 py-1.5 rounded-xl font-bold text-[11px] shadow transition">Cancel Order</button>
+                    </div>
+                `;
+                pDiv.appendChild(card);
+            }
+            else if(order.status === 'prep' && (statusFilter === 'all' || statusFilter === 'prep')) {
+                prCount++;
+                card.innerHTML = `
+                        <div class="flex justify-between items-center pb-1 border-b border-blue-100">
+                            <strong class="text-blue-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
+                        </div>
+                        ${orderItemsHtml(order)}
+                        <p class="text-[10px] text-blue-600 font-bold">⏱ <span class="prep-timer font-mono" data-start="${order.startedAt || ''}" data-eta="${eta}">--:--</span> elapsed · 🤖 AI ETA ~${eta} min</p>
+                        <p class="text-[9px] text-slate-400">complexity ${etaInfo.complexity} pts · ${etaInfo.ahead} ahead · speed ×${etaInfo.speed}</p>
+                        <button onclick="updateOrderStatus('${order.id}', 'ready')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Mark as Ready</button>
+                    `;
+                prDiv.appendChild(card);
+            } else if(order.status === 'ready' && (statusFilter === 'all' || statusFilter === 'ready')) {
+                rCount++;
+                card.innerHTML = `
+                        <div class="flex justify-between items-center pb-1 border-b border-emerald-100">
+                            <strong class="text-emerald-900 font-extrabold text-sm">#${order.id} - ${esc(displayName)}</strong> ${sourceTag}
+                        </div>
+                        ${orderItemsHtml(order)}
+                       <button onclick="updateOrderStatus('${order.id}', 'completed')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl font-bold text-[11px] shadow transition">Complete Order ✔</button>
+                    `;
+                rDiv.appendChild(card);
+            }
+        });
+
+        if(document.getElementById('count-pending')) document.getElementById('count-pending').innerText = pCount;
+        if(document.getElementById('count-prep')) document.getElementById('count-prep').innerText = prCount;
+        if(document.getElementById('count-ready')) document.getElementById('count-ready').innerText = rCount;
+        updateKdsHeaderCounts();
+        if (window.tickPrepTimers) tickPrepTimers();
+    }
+    function updateOrderStatus(id, newStatus) {
+        let queue = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        let index = queue.findIndex(o => String(o.id) === String(id));
+        if (index < 0) return;
+
+        let order = queue[index];
+        if (newStatus === 'complete' || newStatus === 'completed') {
+            newStatus = 'completed';
+        }
+        const nextStatus = { pending: 'prep', prep: 'ready', ready: 'completed' }[order.status];
+        if (nextStatus !== newStatus) {
+            appToast('That order status transition is not allowed.');
+            return;
+        }
+        order.status = newStatus;
+        if (newStatus === 'prep' && !order.startedAt) order.startedAt = Date.now();
+        if (newStatus === 'ready') order.readyAt = Date.now();
+        if (window.logSystemAudit) logSystemAudit('KDS', `Order #${id} → ${newStatus}`);
+
+        if (newStatus === 'completed') {
+            queue.splice(index, 1);
+            let history = JSON.parse(localStorage.getItem('cc_completed_orders_history') || '[]');
+            order.completedAt = Date.now();
+            history.push(order);
+            localStorage.setItem('cc_completed_orders_history', JSON.stringify(history));
+
+            if (typeof window.applyStockDeduction === 'function') {
+                window.applyStockDeduction(order);
+            }
+        }
+
+        localStorage.setItem('cc_synced_queue', JSON.stringify(queue));
+        if (typeof renderKitchenKanban === 'function') renderKitchenKanban();
+        if (window.appToast) window.appToast(`Order #${id} updated to ${newStatus}!`);
+    }
+
+    // Kitchen inventory uses ingredient/tool records, separate from the saleable menu.
+    function renderKitchenInventory() {
+        const tbody = document.getElementById('inventory-table-body');
+        if (!tbody) return;
+        const query = (document.getElementById('kitchen-inventory-search')?.value || '').trim().toLowerCase();
+        const showArchived = document.getElementById('show-archived-inventory')?.checked || false;
+        const items = getKitchenInventory().map((item, index) => ({ item, index }))
+            .filter(({ item }) => (showArchived || !item.archived) &&
+                `${item.name} ${item.category} ${item.unit}`.toLowerCase().includes(query));
+        tbody.innerHTML = items.length ? items.map(({ item, index }) => {
+            const low = Number(item.stock) <= Number(item.restockAt);
+            return `<tr class="hover:bg-orange-50/50 ${item.archived ? 'opacity-60' : ''}">
+                <td class="p-2.5 font-bold text-slate-800">${esc(item.name)}</td>
+                <td class="p-2.5">${esc(item.category)}</td>
+                <td class="p-2.5">${esc(item.unit)}</td>
+                <td class="p-2.5 font-bold">${Number(item.stock)}</td>
+                <td class="p-2.5">${Number(item.restockAt)}</td>
+                <td class="p-2.5">${item.expiryDate ? esc(item.expiryDate) : '—'}</td>
+                <td class="p-2.5"><span class="${item.archived ? 'badge-red' : low ? 'badge-red' : 'badge-green'}">${item.archived ? 'Archived' : low ? 'Restock needed' : 'In stock'}</span></td>
+                <td class="p-2.5 text-right whitespace-nowrap space-x-1">
+                    ${item.archived ? `<button onclick="unarchiveKitchenItem(${index})" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-2.5 py-1 rounded-lg text-[11px]">Unarchive</button>` : `<button onclick="openKitchenItemModal(${index})" class="bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold px-2.5 py-1 rounded-lg text-[11px]">Edit</button>
+                    <button onclick="archiveKitchenItem(${index})" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2.5 py-1 rounded-lg text-[11px]">Archive</button>`}
+                </td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="8" class="p-6 text-center text-slate-400">No inventory items found.</td></tr>';
+    }
+
+    // Modal Management Functions
+    function openKitchenItemModal(idx = null) {
+        const inventoryData = getKitchenInventory();
+        editingIndex = idx;
+        let modal = document.getElementById('kitchen-item-modal');
+        let title = document.getElementById('kitchen-modal-title');
+
+        if (idx !== null && inventoryData[idx]) {
+            let item = inventoryData[idx];
+            title.innerText = "Edit Inventory Item";
+            document.getElementById('kitchen-item-name').value = item.name || '';
+            document.getElementById('kitchen-item-category').value = item.category || '';
+            document.getElementById('kitchen-item-unit').value = item.unit || '';
+            document.getElementById('kitchen-item-stock').value = item.stock || 0;
+            document.getElementById('kitchen-item-restock').value = item.restockAt || 0;
+            document.getElementById('kitchen-item-expiry').value = item.expiryDate || '';
+        } else {
+            title.innerText = "Add Inventory Item";
+            document.getElementById('kitchen-item-name').value = '';
+            document.getElementById('kitchen-item-category').value = 'Ingredient';
+            document.getElementById('kitchen-item-unit').value = '';
+            document.getElementById('kitchen-item-stock').value = 0;
+            document.getElementById('kitchen-item-restock').value = 0;
+            document.getElementById('kitchen-item-expiry').value = '';
+        }
+        modal.classList.remove('hidden');
+    }
+
+    function closeKitchenItemModal() {
+        document.getElementById('kitchen-item-modal').classList.add('hidden');
+        editingIndex = null;
+    }
+
+    function saveKitchenItem() {
+        const items = getKitchenInventory();
+        const name = document.getElementById('kitchen-item-name').value.trim();
+        const category = document.getElementById('kitchen-item-category').value;
+        const unit = document.getElementById('kitchen-item-unit').value.trim();
+        const stock = Number(document.getElementById('kitchen-item-stock').value);
+        const restockAt = Number(document.getElementById('kitchen-item-restock').value);
+        const expiryDate = document.getElementById('kitchen-item-expiry').value;
+        if (!name || !unit || !Number.isFinite(stock) || stock < 0 || !Number.isFinite(restockAt) || restockAt < 0) {
+            appToast('Enter a name, unit, and non-negative stock and restock amounts.');
+            return;
+        }
+        const previous = editingIndex !== null ? items[editingIndex] : null;
+        const item = { ...(previous || {}), name, category, unit, stock, restockAt, expiryDate };
+        if (editingIndex !== null && previous) items[editingIndex] = item;
+        else items.push(item);
+        saveKitchenInventory(items);
+        closeKitchenItemModal();
+        renderKitchenInventory();
+        logSystemAudit('INVENTORY', `${previous ? 'Updated' : 'Added'} kitchen inventory item "${name}"`);
+        appToast(`Saved inventory item: ${name}`);
+    }
+
+    function archiveKitchenItem(index) {
+        const items = getKitchenInventory();
+        const item = items[index];
+        if (!item || item.archived) return;
+        appConfirm(`Archive "${item.name}"? It will remain in the inventory record.`, 'Archive Inventory')
+            .then(confirmed => {
+                if (!confirmed) return;
+                item.archived = true;
+                item.archivedAt = Date.now();
+                saveKitchenInventory(items);
+                renderKitchenInventory();
+                logSystemAudit('INVENTORY', `Archived kitchen inventory item "${item.name}"`);
+                appToast(`Archived inventory item: ${item.name}`);
+            });
+    }
+
+    function unarchiveKitchenItem(index) {
+        const items = getKitchenInventory();
+        const item = items[index];
+        if (!item || !item.archived) return;
+        item.archived = false;
+        delete item.archivedAt;
+        saveKitchenInventory(items);
+        renderKitchenInventory();
+        logSystemAudit('INVENTORY', `Unarchived kitchen inventory item "${item.name}"`);
+        appToast(`Unarchived inventory item: ${item.name}`);
+    }
+
+    function tickKdsClock() {
+        const el = document.getElementById('kds-clock');
+        if (el) el.textContent = new Date().toLocaleString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    }
+    function updateKdsHeaderCounts() {
+        const q = JSON.parse(localStorage.getItem('cc_synced_queue') || '[]');
+        const n = s => q.filter(o => o.status === s).length;
+        const el = document.getElementById('hdr-counts');
+        if (el) el.textContent = `Pending ${n('pending')} · Preparing ${n('prep')} · Ready ${n('ready')}`;
+    }
+    setInterval(tickKdsClock, 1000); tickKdsClock();
+
+    Portal.onTab = { kds: renderKitchenKanban, inventory: renderKitchenInventory };
+    Portal.init('kitchen', [
+        { id: 'kds', label: 'Kitchen Display', icon: 'fa-fire-burner', group: 'Orders', live: true },
+        { id: 'inventory', label: 'Inventory Management', icon: 'fa-boxes-stacked', group: 'Stock' }
+    ], 'kds');
+</script>
+</body>
+</html>
